@@ -1,5 +1,6 @@
 import * as vscode from "vscode";
 import { Choices } from "./choice";
+import { Decorations } from "./decorations";
 import { Files } from "./files";
 import { recentCommits } from "./git";
 import { pickChoice } from "./picker";
@@ -11,11 +12,13 @@ const RECENT_COMMITS = 10;
 export function activate(context: vscode.ExtensionContext): void {
   const repos = new Repos();
   const choices = new Choices(context.workspaceState);
+  const decorations = new Decorations();
 
   context.subscriptions.push(
     repos,
     choices,
-    new Files(repos, choices),
+    decorations,
+    new Files(repos, choices, decorations),
     vscode.commands.registerCommand("gitChanges.choose", async () => {
       const [repo] = repos.list();
       const root = repo?.rootUri.fsPath;

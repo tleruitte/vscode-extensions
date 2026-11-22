@@ -1,23 +1,26 @@
 import * as vscode from "vscode";
 import * as path from "node:path";
 import { Choices, describe } from "./choice";
-import { Change, NoDiff, changes, resolve } from "./diff";
+import { Decorations, rowUri } from "./decorations";
+import { Change, NoDiff, Status, changes, resolve } from "./diff";
 import { Repos } from "./repos";
+import { Node, buildTree } from "./tree";
 
 /** The tree of the changed files of the chosen diff. */
-export class Files implements vscode.TreeDataProvider<vscode.TreeItem>, vscode.Disposable {
-  private readonly view: vscode.TreeView<vscode.TreeItem>;
+export class Files implements vscode.TreeDataProvider<Node>, vscode.Disposable {
+  private readonly view: vscode.TreeView<Node>;
   private readonly changed = new vscode.EventEmitter<void>();
   readonly onDidChangeTreeData = this.changed.event;
   private readonly disposables: vscode.Disposable[] = [];
   private root: string | undefined;
-  private files: Change[] = [];
+  private nodes: Node[] = [];
   /** Counts the refreshes, so only the last one shows. */
   private generation = 0;
 
   constructor(
     private readonly repos: Repos,
     private readonly choices: Choices,
+    private readonly decorations: Decorations,
   ) {
     this.view = vscode.window.createTreeView("gitChanges.files", { treeDataProvider: this });
     this.disposables.push(
@@ -60,22 +63,37 @@ export class Files implements vscode.TreeDataProvider<vscode.TreeItem>, vscode.D
       return;
     }
     this.root = root;
-    this.files = files;
+    this.nodes = buildTree(files);
+    this.decorations.set(
+      new Map(files.map((c): [string, Status] => [path.join(root!, c.path), c.status])),
+    );
     this.view.description = description;
     this.view.message = message;
     this.changed.fire();
   }
 
-  getTreeItem(item: vscode.TreeItem): vscode.TreeItem {
+  getTreeItem(node: Node): vscode.TreeItem {
+    if (node.kind === "folder") {
+      const item = new vscode.TreeItem(node.label, vscode.TreeItemCollapsibleState.Expanded);
+      item.id = `folder:${this.root}/${node.path}`;
+      item.resourceUri = rowUri(path.join(this.root!, node.path));
+      item.iconPath = vscode.ThemeIcon.Folder;
+      item.tooltip = node.path;
+      return item;
+    }
+    const change = node.change;
+    const item = new vscode.TreeItem(path.basename(change.path));
+    item.id = `file:${this.root}/${change.path}`;
+    item.resourceUri = rowUri(path.join(this.root!, change.path));
+    item.iconPath = vscode.ThemeIcon.File;
+    item.tooltip = change.oldPath ? `${change.path}\nRenamed from ${change.oldPath}` : change.path;
+    if (change.oldPath) {
+      item.description = `← ${path.basename(change.oldPath)}`;
+    }
     return item;
   }
 
-  getChildren(): vscode.TreeItem[] {
-    return this.files.map((change) => {
-      const item = new vscode.TreeItem(change.path);
-      item.description = change.status;
-      item.resourceUri = vscode.Uri.file(path.join(this.root!, change.path));
-      return item;
-    });
+  getChildren(node?: Node): Node[] {
+    return node ? (node.kind === "folder" ? node.children : []) : this.nodes;
   }
 }

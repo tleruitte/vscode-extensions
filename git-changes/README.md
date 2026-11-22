@@ -19,6 +19,8 @@ VS Code and Cursor extension that shows the files of a chosen diff as a tree, in
 
    The title of the sidebar shows the choice. Git Changes remembers it for the workspace.
 
+5. The sidebar shows the changed files as a folder tree. As in the Explorer, the name and the letter on the right show the status: added (A), modified (M), deleted (D), renamed (R), or untracked (U). The status is the one of the chosen diff: compared to main, a file that the branch added shows as added, also when it is committed. A renamed file shows its old name after its name.
+
 ## Contributing
 
 To build, package, or publish the extension, see [CONTRIBUTING.md](https://github.com/tleruitte/vscode-extensions/blob/main/CONTRIBUTING.md).
