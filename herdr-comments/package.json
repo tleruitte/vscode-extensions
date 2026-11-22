@@ -2,7 +2,7 @@
   "name": "herdr-comments",
   "displayName": "Herdr Comments",
   "description": "Comments on lines of code, sent as one review to the coding agent that works on the folder in Herdr.",
-  "version": "0.1.0",
+  "version": "0.2.0",
   "publisher": "tleruitte",
   "repository": {
     "type": "git",
@@ -129,19 +129,25 @@
       },
       {
         "command": "herdrComments.addGeneral",
-        "args": { "back": "workbench.action.focusSideBar" },
+        "args": {
+          "back": "workbench.action.focusSideBar"
+        },
         "key": "ctrl+shift+c",
         "when": "sideBarFocus && !editorTextFocus && !terminalFocus"
       },
       {
         "command": "herdrComments.addGeneral",
-        "args": { "back": "workbench.action.focusAuxiliaryBar" },
+        "args": {
+          "back": "workbench.action.focusAuxiliaryBar"
+        },
         "key": "ctrl+shift+c",
         "when": "auxiliaryBarFocus && !editorTextFocus && !terminalFocus"
       },
       {
         "command": "herdrComments.addGeneral",
-        "args": { "back": "workbench.action.focusPanel" },
+        "args": {
+          "back": "workbench.action.focusPanel"
+        },
         "key": "ctrl+shift+c",
         "when": "panelFocus && !editorTextFocus && !terminalFocus"
       },
@@ -157,13 +163,17 @@
       },
       {
         "command": "type",
-        "args": { "text": "\n" },
+        "args": {
+          "text": "\n"
+        },
         "key": "shift+enter",
         "when": "commentEditorFocused && commentController == herdrComments"
       },
       {
         "command": "type",
-        "args": { "text": "\n" },
+        "args": {
+          "text": "\n"
+        },
         "key": "ctrl+enter",
         "mac": "cmd+enter",
         "when": "commentEditorFocused && commentController == herdrComments"
@@ -185,17 +195,50 @@
     ],
     "menus": {
       "commandPalette": [
-        { "command": "herdrComments.save", "when": "false" },
-        { "command": "herdrComments.cancelNew", "when": "false" },
-        { "command": "herdrComments.edit", "when": "false" },
-        { "command": "herdrComments.delete", "when": "false" },
-        { "command": "herdrComments.saveEdit", "when": "false" },
-        { "command": "herdrComments.cancelEdit", "when": "false" },
-        { "command": "herdrComments.reveal", "when": "false" },
-        { "command": "herdrComments.addGeneralFromView", "when": "false" },
-        { "command": "herdrComments.addGeneralFromGitChanges", "when": "false" },
-        { "command": "herdrComments.start", "when": "herdrComments.startsAgent" },
-        { "command": "herdrComments.submit", "when": "!herdrComments.startsAgent" }
+        {
+          "command": "herdrComments.save",
+          "when": "false"
+        },
+        {
+          "command": "herdrComments.cancelNew",
+          "when": "false"
+        },
+        {
+          "command": "herdrComments.edit",
+          "when": "false"
+        },
+        {
+          "command": "herdrComments.delete",
+          "when": "false"
+        },
+        {
+          "command": "herdrComments.saveEdit",
+          "when": "false"
+        },
+        {
+          "command": "herdrComments.cancelEdit",
+          "when": "false"
+        },
+        {
+          "command": "herdrComments.reveal",
+          "when": "false"
+        },
+        {
+          "command": "herdrComments.addGeneralFromView",
+          "when": "false"
+        },
+        {
+          "command": "herdrComments.addGeneralFromGitChanges",
+          "when": "false"
+        },
+        {
+          "command": "herdrComments.start",
+          "when": "herdrComments.startsAgent"
+        },
+        {
+          "command": "herdrComments.submit",
+          "when": "!herdrComments.startsAgent"
+        }
       ],
       "view/title": [
         {
