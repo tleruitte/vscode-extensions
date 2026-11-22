@@ -2,6 +2,18 @@
   "version": "0.2.0",
   "configurations": [
     {
+      "name": "Run git-changes",
+      "type": "extensionHost",
+      "request": "launch",
+      "args": [
+        "--extensionDevelopmentPath=${workspaceFolder}/git-changes"
+      ],
+      "outFiles": [
+        "${workspaceFolder}/git-changes/out/**/*.js"
+      ],
+      "preLaunchTask": "npm: watch - git-changes"
+    },
+    {
       "name": "Run herdr-comments",
       "type": "extensionHost",
       "request": "launch",

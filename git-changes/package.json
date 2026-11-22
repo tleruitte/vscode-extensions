@@ -1,0 +1,58 @@
+{
+  "name": "git-changes",
+  "displayName": "Git Changes",
+  "description": "A sidebar of the files of a chosen diff, as a tree: the uncommitted changes, the last commit, the branch compared to main, or a commit.",
+  "version": "0.1.0",
+  "publisher": "tleruitte",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/tleruitte/vscode-extensions.git",
+    "directory": "git-changes"
+  },
+  "engines": {
+    "vscode": "^1.85.0"
+  },
+  "categories": [
+    "SCM Providers"
+  ],
+  "keywords": [
+    "git",
+    "diff",
+    "changes",
+    "review",
+    "pull request"
+  ],
+  "main": "./out/extension.js",
+  "contributes": {
+    "viewsContainers": {
+      "activitybar": [
+        {
+          "id": "gitChanges",
+          "title": "Git Changes",
+          "icon": "images/git-changes.svg"
+        }
+      ]
+    },
+    "views": {
+      "gitChanges": [
+        {
+          "id": "gitChanges.files",
+          "name": "Git Changes"
+        }
+      ]
+    }
+  },
+  "scripts": {
+    "vscode:prepublish": "npm run compile",
+    "compile": "tsc -p ./",
+    "watch": "tsc -watch -p ./",
+    "prepackage": "node -e \"require('node:fs').mkdirSync('releases', { recursive: true })\"",
+    "package": "npx @vscode/vsce package --out releases"
+  },
+  "devDependencies": {
+    "@types/node": "^20.10.0",
+    "@types/vscode": "^1.85.0",
+    "typescript": "^5.3.0"
+  },
+  "license": "MIT"
+}
