@@ -7,7 +7,7 @@ import { Gutter } from "./gutter";
 import { Row, openDiff, openRow } from "./open";
 import { pickChoice } from "./picker";
 import { Repos } from "./repos";
-import { File } from "./tree";
+import { File, Repo } from "./tree";
 import { Versions } from "./versions";
 
 /** How many recent commits the picker offers. */
@@ -30,9 +30,10 @@ export function activate(context: vscode.ExtensionContext): void {
     vscode.commands.registerCommand("gitChanges.open", (row: Row) => openRow(row)),
     // The buttons of a row get its node.
     vscode.commands.registerCommand("gitChanges.openDiff", (node: File) => openDiff(node.row)),
+    // With more than one repository, the title offers no commits: each repository row does.
     vscode.commands.registerCommand("gitChanges.choose", async () => {
-      const [repo] = repos.list();
-      const root = repo?.rootUri.fsPath;
+      const all = repos.list();
+      const root = all.length === 1 ? all[0].rootUri.fsPath : undefined;
       const commits = root ? await recentCommits(root, RECENT_COMMITS) : [];
       const choice = await pickChoice(true, commits);
       if (!choice) {
@@ -42,6 +43,17 @@ export function activate(context: vscode.ExtensionContext): void {
         choices.setPicked(root!, choice);
       } else {
         choices.setShared(choice);
+      }
+    }),
+    vscode.commands.registerCommand("gitChanges.chooseInRepo", async (node: Repo) => {
+      const commits = await recentCommits(node.root, RECENT_COMMITS);
+      if (!commits.length) {
+        void vscode.window.showInformationMessage("This repository has no commits yet.");
+        return;
+      }
+      const choice = await pickChoice(false, commits);
+      if (choice?.kind === "commit" || choice?.kind === "range") {
+        choices.setPicked(node.root, choice);
       }
     }),
   );

@@ -19,6 +19,16 @@ export class Gutter implements vscode.Disposable {
     this.repos.clear();
   }
 
+  /** Removes the marks of the repositories that are not in `roots`. */
+  retain(roots: string[]): void {
+    for (const [root, { control }] of this.repos) {
+      if (!roots.includes(root)) {
+        control.dispose();
+        this.repos.delete(root);
+      }
+    }
+  }
+
   /** Sets the file rows of the repository at `root`, or none to show no marks. */
   set(root: string, rows: Row[] | undefined): void {
     const key = rows ? JSON.stringify(rows.map((r) => [r.diff, r.change])) : "";

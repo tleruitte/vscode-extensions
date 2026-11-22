@@ -2,11 +2,12 @@ import type { Row } from "./open";
 
 export interface Folder {
   kind: "folder";
+  root: string;
   /** The path from the root of the repository, with `/`. */
   path: string;
   /** The folders that have only one folder in them share one row, as on GitHub: `src/app`. */
   label: string;
-  children: Node[];
+  children: (Folder | File)[];
 }
 
 export interface File {
@@ -14,11 +15,27 @@ export interface File {
   row: Row;
 }
 
-export type Node = Folder | File;
+/** A repository, when the workspace has more than one. */
+export interface Repo {
+  kind: "repo";
+  root: string;
+  /** The choice of the repository, or why it shows no changes. */
+  description: string;
+  children: Node[];
+}
+
+/** Why a repository shows no changes. */
+export interface Message {
+  kind: "message";
+  root: string;
+  text: string;
+}
+
+export type Node = Repo | Message | Folder | File;
 
 /** The rows as a tree of folders, folders first, then by name. */
-export function buildTree(rows: Row[]): Node[] {
-  const top: Folder = { kind: "folder", path: "", label: "", children: [] };
+export function buildTree(root: string, rows: Row[]): Node[] {
+  const top: Folder = { kind: "folder", root, path: "", label: "", children: [] };
   for (const row of rows) {
     const names = row.change.path.split("/");
     let folder = top;
@@ -26,7 +43,7 @@ export function buildTree(rows: Row[]): Node[] {
       const path = folder.path ? `${folder.path}/${name}` : name;
       let next = folder.children.find((n): n is Folder => n.kind === "folder" && n.path === path);
       if (!next) {
-        next = { kind: "folder", path, label: name, children: [] };
+        next = { kind: "folder", root, path, label: name, children: [] };
         folder.children.push(next);
       }
       folder = next;
@@ -36,19 +53,19 @@ export function buildTree(rows: Row[]): Node[] {
   return compact(top.children);
 }
 
-function name(node: Node): string {
+function name(node: Folder | File): string {
   return node.kind === "folder" ? node.label : node.row.change.path.split("/").pop()!;
 }
 
-function compact(nodes: Node[]): Node[] {
+function compact(nodes: (Folder | File)[]): (Folder | File)[] {
   return nodes
-    .map((node): Node => {
+    .map((node): Folder | File => {
       if (node.kind === "file") {
         return node;
       }
       let folder = node;
       while (folder.children.length === 1 && folder.children[0].kind === "folder") {
-        const only: Folder = folder.children[0];
+        const only = folder.children[0];
         folder = { ...only, label: `${folder.label}/${only.label}` };
       }
       return { ...folder, children: compact(folder.children) };

@@ -2,19 +2,44 @@ import * as vscode from "vscode";
 import * as path from "node:path";
 import { Choices, describe } from "./choice";
 import { Decorations, rowUri } from "./decorations";
-import { Change, Diff, NoDiff, Status, changes, resolve } from "./diff";
+import { NoDiff, Status, changes, resolve } from "./diff";
 import { Gutter } from "./gutter";
 import { Row } from "./open";
 import { Repos } from "./repos";
 import { Node, buildTree } from "./tree";
 
-/** The tree of the changed files of the chosen diff. */
+/** The changes of one repository in its chosen diff. */
+interface Shown {
+  root: string;
+  rows: Row[];
+  /** The choice, for the title of the sidebar or of the repository row. */
+  description: string;
+  /** Why the repository shows no changes. */
+  message?: string;
+}
+
+async function show(root: string, choices: Choices): Promise<Shown> {
+  const choice = choices.of(root);
+  const description = describe(choice);
+  try {
+    const diff = await resolve(root, choice);
+    const shown = diff.main ? `Compared to ${diff.main}` : description;
+    const rows = (await changes(root, diff)).map(
+      (change): Row => ({ root, diff, change, description: shown }),
+    );
+    return { root, rows, description: shown, message: rows.length ? undefined : "No changes." };
+  } catch (e) {
+    const message = e instanceof NoDiff ? e.message : `Cannot read the changes: ${(e as Error).message}`;
+    return { root, rows: [], description, message };
+  }
+}
+
+/** The tree of the changed files of the chosen diff, with a row for each repository when there are several. */
 export class Files implements vscode.TreeDataProvider<Node>, vscode.Disposable {
   private readonly view: vscode.TreeView<Node>;
   private readonly changed = new vscode.EventEmitter<void>();
   readonly onDidChangeTreeData = this.changed.event;
   private readonly disposables: vscode.Disposable[] = [];
-  private root: string | undefined;
   private nodes: Node[] = [];
   /** Counts the refreshes, so only the last one shows. */
   private generation = 0;
@@ -43,73 +68,93 @@ export class Files implements vscode.TreeDataProvider<Node>, vscode.Disposable {
 
   private async refresh(): Promise<void> {
     const generation = ++this.generation;
-    const root = this.repos.list()[0]?.rootUri.fsPath;
-    const choice = root ? this.choices.of(root) : this.choices.shared;
-    let diff: Diff | undefined;
-    let files: Change[] = [];
-    let message: string | undefined;
-    let description = describe(choice);
-    if (!root) {
-      message = "No Git repository in the workspace.";
-    } else {
-      try {
-        diff = await resolve(root, choice);
-        files = await changes(root, diff);
-        if (diff.main) {
-          description = `Compared to ${diff.main}`;
-        }
-        message = files.length ? undefined : "No changes.";
-      } catch (e) {
-        message = e instanceof NoDiff ? e.message : `Cannot read the changes: ${(e as Error).message}`;
-      }
-    }
+    const roots = this.repos.list().map((r) => r.rootUri.fsPath);
+    const all = await Promise.all(roots.map((root) => show(root, this.choices)));
     if (generation !== this.generation) {
       return;
     }
-    const rows = diff ? files.map((change): Row => ({ root: root!, diff: diff!, change, description })) : [];
-    this.root = root;
-    this.nodes = buildTree(rows);
-    if (root) {
+    this.gutter.retain(roots);
+    for (const shown of all) {
       this.gutter.set(
-        root,
-        diff && choice.kind !== "uncommitted" ? rows : undefined,
+        shown.root,
+        this.choices.of(shown.root).kind === "uncommitted" ? undefined : shown.rows,
       );
     }
     this.decorations.set(
-      new Map(files.map((c): [string, Status] => [path.join(root!, c.path), c.status])),
+      new Map(
+        all.flatMap((s) =>
+          s.rows.map((r): [string, Status] => [path.join(r.root, r.change.path), r.change.status]),
+        ),
+      ),
     );
-    this.view.description = description;
-    this.view.message = message;
+    if (all.length === 1) {
+      const [only] = all;
+      this.nodes = buildTree(only.root, only.rows);
+      this.view.description = only.description;
+      this.view.message = only.message;
+    } else {
+      this.nodes = all.map((s) => ({
+        kind: "repo",
+        root: s.root,
+        description: s.description,
+        children: s.message
+          ? [{ kind: "message", root: s.root, text: s.message }]
+          : buildTree(s.root, s.rows),
+      }));
+      this.view.description = describe(this.choices.shared);
+      this.view.message = all.length ? undefined : "No Git repository in the workspace.";
+    }
     this.changed.fire();
   }
 
   getTreeItem(node: Node): vscode.TreeItem {
-    if (node.kind === "folder") {
-      const item = new vscode.TreeItem(node.label, vscode.TreeItemCollapsibleState.Expanded);
-      item.id = `folder:${this.root}/${node.path}`;
-      item.resourceUri = rowUri(path.join(this.root!, node.path));
-      item.iconPath = vscode.ThemeIcon.Folder;
-      item.tooltip = node.path;
-      return item;
+    switch (node.kind) {
+      case "repo": {
+        const item = new vscode.TreeItem(path.basename(node.root), vscode.TreeItemCollapsibleState.Expanded);
+        item.id = `repo:${node.root}`;
+        item.description = node.description;
+        item.tooltip = node.root;
+        item.iconPath = new vscode.ThemeIcon("repo");
+        item.contextValue = "gitChangesRepo";
+        return item;
+      }
+      case "message": {
+        const item = new vscode.TreeItem(node.text);
+        item.id = `message:${node.root}`;
+        return item;
+      }
+      case "folder": {
+        const item = new vscode.TreeItem(node.label, vscode.TreeItemCollapsibleState.Expanded);
+        item.id = `folder:${node.root}/${node.path}`;
+        item.resourceUri = rowUri(path.join(node.root, node.path));
+        item.iconPath = vscode.ThemeIcon.Folder;
+        item.tooltip = node.path;
+        return item;
+      }
+      case "file": {
+        const { root, change } = node.row;
+        const item = new vscode.TreeItem(path.basename(change.path));
+        item.id = `file:${root}/${change.path}`;
+        item.resourceUri = rowUri(path.join(root, change.path));
+        item.iconPath = vscode.ThemeIcon.File;
+        item.tooltip = change.oldPath ? `${change.path}\nRenamed from ${change.oldPath}` : change.path;
+        item.description = [
+          change.oldPath && `← ${path.basename(change.oldPath)}`,
+          change.changedSince && "changed since",
+        ]
+          .filter(Boolean)
+          .join(" · ");
+        item.command = { command: "gitChanges.open", title: "Open", arguments: [node.row] };
+        item.contextValue = "gitChangesFile";
+        return item;
+      }
     }
-    const change = node.row.change;
-    const item = new vscode.TreeItem(path.basename(change.path));
-    item.id = `file:${this.root}/${change.path}`;
-    item.resourceUri = rowUri(path.join(this.root!, change.path));
-    item.iconPath = vscode.ThemeIcon.File;
-    item.tooltip = change.oldPath ? `${change.path}\nRenamed from ${change.oldPath}` : change.path;
-    item.description = [
-      change.oldPath && `← ${path.basename(change.oldPath)}`,
-      change.changedSince && "changed since",
-    ]
-      .filter(Boolean)
-      .join(" · ");
-    item.command = { command: "gitChanges.open", title: "Open", arguments: [node.row] };
-    item.contextValue = "gitChangesFile";
-    return item;
   }
 
   getChildren(node?: Node): Node[] {
-    return node ? (node.kind === "folder" ? node.children : []) : this.nodes;
+    if (!node) {
+      return this.nodes;
+    }
+    return node.kind === "repo" || node.kind === "folder" ? node.children : [];
   }
 }

@@ -31,6 +31,10 @@ VS Code and Cursor extension that shows the files of a chosen diff as a tree, in
    - The marks of Git, of the uncommitted changes, show too. Compared to main, a file with uncommitted changes has both, mostly on the same lines.
    - So that the editor shows these marks, the Source Control view has an empty **Git Changes** entry.
 
+## More than one repository
+
+When the workspace has more than one Git repository, each one has a row, with its changed files below it. The choice in the title of the sidebar (uncommitted changes, last commit, or compared to main) applies to all of them. To show a commit or a range of commits of one repository, click the commit icon on its row. A worktree works like any other repository.
+
 ## Contributing
 
 To build, package, or publish the extension, see [CONTRIBUTING.md](https://github.com/tleruitte/vscode-extensions/blob/main/CONTRIBUTING.md).

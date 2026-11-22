@@ -52,6 +52,12 @@
         "icon": "$(git-compare)"
       },
       {
+        "command": "gitChanges.chooseInRepo",
+        "title": "Choose a Commit of the Repository",
+        "category": "Git Changes",
+        "icon": "$(git-commit)"
+      },
+      {
         "command": "gitChanges.open",
         "title": "Open"
       },
@@ -71,6 +77,10 @@
         {
           "command": "gitChanges.openDiff",
           "when": "false"
+        },
+        {
+          "command": "gitChanges.chooseInRepo",
+          "when": "false"
         }
       ],
       "view/title": [
@@ -81,6 +91,11 @@
         }
       ],
       "view/item/context": [
+        {
+          "command": "gitChanges.chooseInRepo",
+          "when": "view == gitChanges.files && viewItem == gitChangesRepo",
+          "group": "inline@1"
+        },
         {
           "command": "gitChanges.openDiff",
           "when": "view == gitChanges.files && viewItem == gitChangesFile",
