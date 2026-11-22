@@ -15,8 +15,6 @@ export class Files implements vscode.TreeDataProvider<Node>, vscode.Disposable {
   readonly onDidChangeTreeData = this.changed.event;
   private readonly disposables: vscode.Disposable[] = [];
   private root: string | undefined;
-  private diff: Diff | undefined;
-  private description = "";
   private nodes: Node[] = [];
   /** Counts the refreshes, so only the last one shows. */
   private generation = 0;
@@ -68,16 +66,13 @@ export class Files implements vscode.TreeDataProvider<Node>, vscode.Disposable {
     if (generation !== this.generation) {
       return;
     }
+    const rows = diff ? files.map((change): Row => ({ root: root!, diff: diff!, change, description })) : [];
     this.root = root;
-    this.diff = diff;
-    this.description = description;
-    this.nodes = buildTree(files);
+    this.nodes = buildTree(rows);
     if (root) {
       this.gutter.set(
         root,
-        diff && choice.kind !== "uncommitted"
-          ? files.map((change) => ({ root, diff: diff!, change, description }))
-          : undefined,
+        diff && choice.kind !== "uncommitted" ? rows : undefined,
       );
     }
     this.decorations.set(
@@ -97,7 +92,7 @@ export class Files implements vscode.TreeDataProvider<Node>, vscode.Disposable {
       item.tooltip = node.path;
       return item;
     }
-    const change = node.change;
+    const change = node.row.change;
     const item = new vscode.TreeItem(path.basename(change.path));
     item.id = `file:${this.root}/${change.path}`;
     item.resourceUri = rowUri(path.join(this.root!, change.path));
@@ -109,8 +104,8 @@ export class Files implements vscode.TreeDataProvider<Node>, vscode.Disposable {
     ]
       .filter(Boolean)
       .join(" · ");
-    const row: Row = { root: this.root!, diff: this.diff!, change, description: this.description };
-    item.command = { command: "gitChanges.open", title: "Open", arguments: [row] };
+    item.command = { command: "gitChanges.open", title: "Open", arguments: [node.row] };
+    item.contextValue = "gitChangesFile";
     return item;
   }
 

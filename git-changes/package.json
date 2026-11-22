@@ -54,12 +54,22 @@
       {
         "command": "gitChanges.open",
         "title": "Open"
+      },
+      {
+        "command": "gitChanges.openDiff",
+        "title": "Open Changes",
+        "category": "Git Changes",
+        "icon": "$(diff)"
       }
     ],
     "menus": {
       "commandPalette": [
         {
           "command": "gitChanges.open",
+          "when": "false"
+        },
+        {
+          "command": "gitChanges.openDiff",
           "when": "false"
         }
       ],
@@ -68,6 +78,13 @@
           "command": "gitChanges.choose",
           "when": "view == gitChanges.files",
           "group": "navigation@1"
+        }
+      ],
+      "view/item/context": [
+        {
+          "command": "gitChanges.openDiff",
+          "when": "view == gitChanges.files && viewItem == gitChangesFile",
+          "group": "inline@1"
         }
       ]
     }

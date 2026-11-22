@@ -1,4 +1,4 @@
-import type { Change } from "./diff";
+import type { Row } from "./open";
 
 export interface Folder {
   kind: "folder";
@@ -11,16 +11,16 @@ export interface Folder {
 
 export interface File {
   kind: "file";
-  change: Change;
+  row: Row;
 }
 
 export type Node = Folder | File;
 
-/** The changes as a tree of folders, folders first, then by name. */
-export function buildTree(changes: Change[]): Node[] {
+/** The rows as a tree of folders, folders first, then by name. */
+export function buildTree(rows: Row[]): Node[] {
   const top: Folder = { kind: "folder", path: "", label: "", children: [] };
-  for (const change of changes) {
-    const names = change.path.split("/");
+  for (const row of rows) {
+    const names = row.change.path.split("/");
     let folder = top;
     for (const name of names.slice(0, -1)) {
       const path = folder.path ? `${folder.path}/${name}` : name;
@@ -31,13 +31,13 @@ export function buildTree(changes: Change[]): Node[] {
       }
       folder = next;
     }
-    folder.children.push({ kind: "file", change });
+    folder.children.push({ kind: "file", row });
   }
   return compact(top.children);
 }
 
 function name(node: Node): string {
-  return node.kind === "folder" ? node.label : node.change.path.split("/").pop()!;
+  return node.kind === "folder" ? node.label : node.row.change.path.split("/").pop()!;
 }
 
 function compact(nodes: Node[]): Node[] {
