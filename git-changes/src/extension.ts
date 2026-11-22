@@ -3,8 +3,10 @@ import { Choices } from "./choice";
 import { Decorations } from "./decorations";
 import { Files } from "./files";
 import { recentCommits } from "./git";
+import { Row, openRow } from "./open";
 import { pickChoice } from "./picker";
 import { Repos } from "./repos";
+import { Versions } from "./versions";
 
 /** How many recent commits the picker offers. */
 const RECENT_COMMITS = 10;
@@ -19,6 +21,8 @@ export function activate(context: vscode.ExtensionContext): void {
     choices,
     decorations,
     new Files(repos, choices, decorations),
+    new Versions(),
+    vscode.commands.registerCommand("gitChanges.open", (row: Row) => openRow(row)),
     vscode.commands.registerCommand("gitChanges.choose", async () => {
       const [repo] = repos.list();
       const root = repo?.rootUri.fsPath;

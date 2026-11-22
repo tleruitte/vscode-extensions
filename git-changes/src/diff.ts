@@ -18,6 +18,8 @@ export interface Change {
   /** The path before a rename. */
   oldPath?: string;
   status: Status;
+  /** The current file is not the one at the end of the commit or range. */
+  changedSince?: boolean;
 }
 
 /** A diff that cannot be shown, with the reason for the person. */
@@ -110,6 +112,12 @@ export async function resolve(root: string, choice: Choice): Promise<Diff> {
   }
 }
 
+/** The files that changed after `head`, as Git reports them with no rename. */
+async function changedAfter(root: string, head: string): Promise<Set<string>> {
+  const out = await git(root, ["diff", "--name-only", "-z", "--no-renames", head]);
+  return new Set(out.split("\0").filter(Boolean));
+}
+
 export async function changes(root: string, diff: Diff): Promise<Change[]> {
   const args = ["diff", "--name-status", "-z", "--find-renames", diff.base];
   const out = await git(root, diff.head ? [...args, diff.head] : args);
@@ -134,6 +142,10 @@ export async function changes(root: string, diff: Diff): Promise<Change[]> {
       ...result.filter((c) => !untracked.has(c.path)),
       ...[...untracked].map((path): Change => ({ path, status: "U" })),
     ].sort((a, b) => a.path.localeCompare(b.path));
+  }
+  const after = await changedAfter(root, diff.head);
+  for (const change of result) {
+    change.changedSince = after.has(change.path);
   }
   return result.sort((a, b) => a.path.localeCompare(b.path));
 }

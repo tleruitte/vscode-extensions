@@ -2,7 +2,8 @@ import * as vscode from "vscode";
 import * as path from "node:path";
 import { Choices, describe } from "./choice";
 import { Decorations, rowUri } from "./decorations";
-import { Change, NoDiff, Status, changes, resolve } from "./diff";
+import { Change, Diff, NoDiff, Status, changes, resolve } from "./diff";
+import { Row } from "./open";
 import { Repos } from "./repos";
 import { Node, buildTree } from "./tree";
 
@@ -13,6 +14,8 @@ export class Files implements vscode.TreeDataProvider<Node>, vscode.Disposable {
   readonly onDidChangeTreeData = this.changed.event;
   private readonly disposables: vscode.Disposable[] = [];
   private root: string | undefined;
+  private diff: Diff | undefined;
+  private description = "";
   private nodes: Node[] = [];
   /** Counts the refreshes, so only the last one shows. */
   private generation = 0;
@@ -42,6 +45,7 @@ export class Files implements vscode.TreeDataProvider<Node>, vscode.Disposable {
     const generation = ++this.generation;
     const root = this.repos.list()[0]?.rootUri.fsPath;
     const choice = root ? this.choices.of(root) : this.choices.shared;
+    let diff: Diff | undefined;
     let files: Change[] = [];
     let message: string | undefined;
     let description = describe(choice);
@@ -49,7 +53,7 @@ export class Files implements vscode.TreeDataProvider<Node>, vscode.Disposable {
       message = "No Git repository in the workspace.";
     } else {
       try {
-        const diff = await resolve(root, choice);
+        diff = await resolve(root, choice);
         files = await changes(root, diff);
         if (diff.main) {
           description = `Compared to ${diff.main}`;
@@ -63,6 +67,8 @@ export class Files implements vscode.TreeDataProvider<Node>, vscode.Disposable {
       return;
     }
     this.root = root;
+    this.diff = diff;
+    this.description = description;
     this.nodes = buildTree(files);
     this.decorations.set(
       new Map(files.map((c): [string, Status] => [path.join(root!, c.path), c.status])),
@@ -87,9 +93,14 @@ export class Files implements vscode.TreeDataProvider<Node>, vscode.Disposable {
     item.resourceUri = rowUri(path.join(this.root!, change.path));
     item.iconPath = vscode.ThemeIcon.File;
     item.tooltip = change.oldPath ? `${change.path}\nRenamed from ${change.oldPath}` : change.path;
-    if (change.oldPath) {
-      item.description = `← ${path.basename(change.oldPath)}`;
-    }
+    item.description = [
+      change.oldPath && `← ${path.basename(change.oldPath)}`,
+      change.changedSince && "changed since",
+    ]
+      .filter(Boolean)
+      .join(" · ");
+    const row: Row = { root: this.root!, diff: this.diff!, change, description: this.description };
+    item.command = { command: "gitChanges.open", title: "Open", arguments: [row] };
     return item;
   }
 

@@ -50,9 +50,19 @@
         "title": "Choose the Diff",
         "category": "Git Changes",
         "icon": "$(git-compare)"
+      },
+      {
+        "command": "gitChanges.open",
+        "title": "Open"
       }
     ],
     "menus": {
+      "commandPalette": [
+        {
+          "command": "gitChanges.open",
+          "when": "false"
+        }
+      ],
       "view/title": [
         {
           "command": "gitChanges.choose",
