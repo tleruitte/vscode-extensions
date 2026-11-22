@@ -34,6 +34,11 @@
           "type": "string",
           "default": "claude",
           "description": "The agent that Herdr starts with the comments when no agent works in the folder, as a command (for example `claude` or `codex`)."
+        },
+        "herdrComments.chat": {
+          "type": "string",
+          "default": "chat",
+          "description": "The Herdr mod that shows the new agent as a chat: `chat` of herdr-chat, or the name of a fork of it. The agent starts in a terminal when this mod is not installed, when the agent is not `claude`, `codex`, or `pi`, or when this setting is empty."
         }
       }
     },
@@ -99,6 +104,24 @@
         "command": "herdrComments.add",
         "key": "ctrl+shift+c",
         "when": "editorTextFocus && activeCursorHasCommentingRange"
+      },
+      {
+        "command": "editor.action.submitComment",
+        "key": "enter",
+        "when": "commentEditorFocused && commentController == herdrComments"
+      },
+      {
+        "command": "type",
+        "args": { "text": "\n" },
+        "key": "shift+enter",
+        "when": "commentEditorFocused && commentController == herdrComments"
+      },
+      {
+        "command": "type",
+        "args": { "text": "\n" },
+        "key": "ctrl+enter",
+        "mac": "cmd+enter",
+        "when": "commentEditorFocused && commentController == herdrComments"
       }
     ],
     "views": {

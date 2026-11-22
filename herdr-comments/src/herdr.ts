@@ -1,4 +1,5 @@
 import { execFile } from "node:child_process";
+import { randomBytes } from "node:crypto";
 import * as fs from "node:fs";
 import * as os from "node:os";
 import * as path from "node:path";
@@ -201,14 +202,53 @@ export async function send(agent: Agent, text: string): Promise<void> {
   await run(hc(), ["send", agent.address, text]);
 }
 
+/** The agents that herdr-chat can show as a chat. */
+const CHAT_PROVIDERS = ["claude", "codex", "pi"];
+
+const appHome = (): string =>
+  process.env.HERDR_APP_HOME || path.join(os.homedir(), ".config", "herdr-app");
+
+/** The provider of herdr-chat for `command`, when `mod` is an installed chat mod. */
+function chatProvider(command: string, mod: string): string | undefined {
+  const provider = programName(command).toLowerCase();
+  return mod &&
+    CHAT_PROVIDERS.includes(provider) &&
+    fs.existsSync(path.join(appHome(), "mods", mod, "mod.json"))
+    ? provider
+    : undefined;
+}
+
+const sleep = (ms: number) => new Promise((resolve) => setTimeout(resolve, ms));
+
+/**
+ * The host of the chat, once it reads its input: the host labels its
+ * terminal with the chat, and reports a status when it is ready.
+ */
+async function chatHost(chat: string): Promise<string> {
+  for (const deadline = Date.now() + 30_000; Date.now() < deadline; ) {
+    const output = JSON.parse(
+      await run(hc(), ["ls", "--json", "--label", `herdr-chat.chat=${chat}`]),
+    ) as { terminals: Terminal[] };
+    const host = output.terminals.find((t) => t.state === "live" && t.status);
+    if (host) {
+      return host.address;
+    }
+    await sleep(250);
+  }
+  throw new HerdrError("The chat did not start in 30 seconds.");
+}
+
 /**
  * Starts `command` with the text as its first message: in a new tab of the
  * space whose terminals are in the folder, else in a new space at the folder.
+ * The agent is a chat of `chatMod` when that mod is installed and can show the
+ * agent, else a terminal.
  */
 export async function start(
   folder: string,
   command: string,
   text: string,
+  chatMod: string,
 ): Promise<void> {
   const app = herdrApp();
   const [layout, terminals] = await Promise.all([
@@ -226,9 +266,36 @@ export async function start(
         }),
       ),
   );
-  const argv = command.trim().split(/\s+/);
-  const args = space
-    ? ["tab.new", JSON.stringify({ space: space.id, folder, argv, task: text })]
-    : ["space.new", JSON.stringify({ folder, argv, task: text })];
-  await run(app, ["do", ...args]);
+  const provider = chatProvider(command, chatMod);
+  if (!provider) {
+    const argv = command.trim().split(/\s+/);
+    const args = space
+      ? ["tab.new", JSON.stringify({ space: space.id, folder, argv, task: text })]
+      : ["space.new", JSON.stringify({ folder, argv, task: text })];
+    await run(app, ["do", ...args]);
+    return;
+  }
+  // A new space comes with a shell tab: it goes once the chat has its own tab.
+  const made = space
+    ? undefined
+    : (JSON.parse(await run(app, ["do", "space.new", JSON.stringify({ folder })])) as {
+        space: string;
+        tab: string;
+      });
+  const chat = `c-${randomBytes(4).toString("hex")}`;
+  await run(app, [
+    "do",
+    "tab.new",
+    JSON.stringify({
+      space: space?.id ?? made!.space,
+      name: provider,
+      mod: chatMod,
+      props: { chat, provider, cwd: folder },
+    }),
+  ]);
+  if (made) {
+    await run(app, ["do", "tab.close", JSON.stringify({ id: made.tab, confirmed: true })]);
+  }
+  // The chat starts its host, which takes the text as a message typed in it.
+  await run(hc(), ["send", await chatHost(chat), text]);
 }

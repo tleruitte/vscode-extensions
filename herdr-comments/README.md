@@ -8,14 +8,15 @@ VS Code and Cursor extension that sends your comments on lines of code, as one r
 
 2. Open the folder of a repository or a worktree that an agent works on in Herdr.
 
-3. Put the cursor on a line, or select some lines. Click **+** in the gutter, or press `⌃⇧C` (**Add Herdr Comment**). Write the comment and click **Add Comment**. Add more comments in any file of the folder.
+3. Put the cursor on a line, or select some lines. Click **+** in the gutter, or press `⌃⇧C` (**Add Herdr Comment**). Write the comment and press `Enter` or click **Add Comment**. `⇧Enter` or `⌘Enter` starts a new line. Add more comments in any file of the folder.
 
-4. The **Herdr Comments** view of the Explorer lists the pending comments. Click a comment to go to it; edit or delete it there or in the editor. The comments stay when the window reloads.
+4. The **Herdr Comments** view lists the pending comments. It is in the Explorer. To move it to the Secondary Side Bar, on the right, run **View: Move View**, choose **Herdr Comments**, then **New Secondary Side Bar Entry**. Click a comment to go to it; edit or delete it there or in the editor. The comments stay when the window reloads.
 
 5. The top of the view says which agent gets the comments, for example `To: Claude · setup / fix login`:
    - The candidates are the agents in Herdr whose folder is in the folder of the window.
    - The default is the agent that has the focus in Herdr, else an idle one, else the first. Click the person icon to choose another candidate.
    - With no candidate, a new agent starts with the comments: in a new tab of the Herdr space of that folder, else in a new space. The **Herdr Comments: Agent** setting says which agent (`claude` by default).
+   - When [herdr-chat](https://github.com/ChmaraX/herdr-chat) is installed, the new agent is a chat. The **Herdr Comments: Chat** setting says which chat mod (`chat` by default; set the name of your fork if you use one). Without that mod, or for an agent other than `claude`, `codex`, or `pi`, the agent starts in a terminal.
 
 6. Click the send icon (**Submit Comments**). The agent gets all comments as one message: for each, the file, the lines, the code as it was when you wrote the comment, and the comment. A working agent gets it during its turn. When the agent waits for your answer to a prompt in Herdr, Submit is off until you answer.
 

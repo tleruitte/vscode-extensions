@@ -101,6 +101,12 @@ export class Panel implements vscode.TreeDataProvider<Pending>, vscode.Disposabl
       .get<string>("agent", "claude");
   }
 
+  private chatMod(): string {
+    return vscode.workspace
+      .getConfiguration("herdrComments")
+      .get<string>("chat", "chat");
+  }
+
   refresh(): Promise<void> {
     this.refreshing ??= this.lookUp().finally(() => {
       this.refreshing = undefined;
@@ -226,7 +232,7 @@ export class Panel implements vscode.TreeDataProvider<Pending>, vscode.Disposabl
           `Sent ${n} to ${herdr.describeAgent(target.agent)}.`,
         );
       } else {
-        await herdr.start(target.folder, this.program(), text);
+        await herdr.start(target.folder, this.program(), text, this.chatMod());
         void vscode.window.showInformationMessage(
           `Started ${herdr.programName(this.program())} in Herdr with ${n}.`,
         );
