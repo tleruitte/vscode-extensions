@@ -38,7 +38,7 @@ Success: the person can review a commit, a range of commits, or a whole branch, 
 
 6. **Click on a file.**
    - In "uncommitted changes" and "compared to the main branch", a click opens the file in a normal editor.
-   - In "last commit", "a commit from the list", and "a range of commits", a click opens the file in a normal editor when the file did not change after the end of that commit or range. This is the usual case. Otherwise, a click opens the diff of that file for that commit or range, and the row shows a small hint ("changed since"). Herdr Comments works on the current side of that diff.
+   - In "last commit", "a commit from the list", and "a range of commits", a click opens the file in a normal editor when the file did not change after the end of that commit or range. This is the usual case. Otherwise, a click opens the diff of that file for that commit or range, and the row shows a small hint ("changed since"). Both sides of that diff are read-only versions: the version before and the version at the end of that commit or range. Herdr Comments does not work on them, because they are not the current file. When the file did not change since, the diff of the row button has the current file on its right side, so Herdr Comments works there.
    - A click on a deleted file opens its diff, because a normal editor cannot open a file that does not exist.
 
 7. **Change marks in the gutter.** In a normal editor, the gutter shows the added, changed, and deleted lines of the chosen diff, also when they are already committed. A click on a mark shows the change in the editor, with the removed lines.
