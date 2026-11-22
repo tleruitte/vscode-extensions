@@ -22,6 +22,9 @@
     "review",
     "pull request"
   ],
+  "extensionDependencies": [
+    "vscode.git"
+  ],
   "main": "./out/extension.js",
   "contributes": {
     "viewsContainers": {
@@ -38,6 +41,23 @@
         {
           "id": "gitChanges.files",
           "name": "Git Changes"
+        }
+      ]
+    },
+    "commands": [
+      {
+        "command": "gitChanges.choose",
+        "title": "Choose the Diff",
+        "category": "Git Changes",
+        "icon": "$(git-compare)"
+      }
+    ],
+    "menus": {
+      "view/title": [
+        {
+          "command": "gitChanges.choose",
+          "when": "view == gitChanges.files",
+          "group": "navigation@1"
         }
       ]
     }
