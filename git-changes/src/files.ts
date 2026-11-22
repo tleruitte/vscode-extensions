@@ -3,6 +3,7 @@ import * as path from "node:path";
 import { Choices, describe } from "./choice";
 import { Decorations, rowUri } from "./decorations";
 import { Change, Diff, NoDiff, Status, changes, resolve } from "./diff";
+import { Gutter } from "./gutter";
 import { Row } from "./open";
 import { Repos } from "./repos";
 import { Node, buildTree } from "./tree";
@@ -24,6 +25,7 @@ export class Files implements vscode.TreeDataProvider<Node>, vscode.Disposable {
     private readonly repos: Repos,
     private readonly choices: Choices,
     private readonly decorations: Decorations,
+    private readonly gutter: Gutter,
   ) {
     this.view = vscode.window.createTreeView("gitChanges.files", { treeDataProvider: this });
     this.disposables.push(
@@ -70,6 +72,14 @@ export class Files implements vscode.TreeDataProvider<Node>, vscode.Disposable {
     this.diff = diff;
     this.description = description;
     this.nodes = buildTree(files);
+    if (root) {
+      this.gutter.set(
+        root,
+        diff && choice.kind !== "uncommitted"
+          ? files.map((change) => ({ root, diff: diff!, change, description }))
+          : undefined,
+      );
+    }
     this.decorations.set(
       new Map(files.map((c): [string, Status] => [path.join(root!, c.path), c.status])),
     );

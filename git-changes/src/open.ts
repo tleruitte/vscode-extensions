@@ -25,10 +25,16 @@ export function openFile(row: Row): Thenable<unknown> {
  * Opens the diff of one file. Its right side is the current file, so it can be
  * edited and commented, unless that file is not the one at the end of the diff.
  */
-export function openDiff(row: Row): Thenable<unknown> {
+/** The version of the file at the start of the diff. */
+export function originalUri(row: Row): vscode.Uri {
   const { root, diff, change } = row;
   const added = change.status === "A" || change.status === "U";
-  const left = versionUri(root, added ? undefined : diff.base, change.oldPath ?? change.path);
+  return versionUri(root, added ? undefined : diff.base, change.oldPath ?? change.path);
+}
+
+export function openDiff(row: Row): Thenable<unknown> {
+  const { root, diff, change } = row;
+  const left = originalUri(row);
   const right =
     change.status === "D"
       ? versionUri(root, undefined, change.path)

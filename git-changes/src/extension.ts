@@ -3,6 +3,7 @@ import { Choices } from "./choice";
 import { Decorations } from "./decorations";
 import { Files } from "./files";
 import { recentCommits } from "./git";
+import { Gutter } from "./gutter";
 import { Row, openRow } from "./open";
 import { pickChoice } from "./picker";
 import { Repos } from "./repos";
@@ -15,12 +16,14 @@ export function activate(context: vscode.ExtensionContext): void {
   const repos = new Repos();
   const choices = new Choices(context.workspaceState);
   const decorations = new Decorations();
+  const gutter = new Gutter();
 
   context.subscriptions.push(
     repos,
     choices,
     decorations,
-    new Files(repos, choices, decorations),
+    gutter,
+    new Files(repos, choices, decorations, gutter),
     new Versions(),
     vscode.commands.registerCommand("gitChanges.open", (row: Row) => openRow(row)),
     vscode.commands.registerCommand("gitChanges.choose", async () => {
