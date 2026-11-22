@@ -6,6 +6,8 @@ export interface Diff {
   base: string;
   /** Undefined for the current files. */
   head: string | undefined;
+  /** The main branch that the diff compares with, for example `origin/main`. */
+  main?: string;
 }
 
 export type Status = "A" | "M" | "D" | "R" | "U";
@@ -45,12 +47,41 @@ async function picked(root: string, sha: string): Promise<string> {
   return found;
 }
 
-async function mainBranch(root: string): Promise<string> {
-  const ref = await commit(root, "origin/HEAD");
-  if (!ref) {
-    throw new NoDiff("No main branch: origin/HEAD is not set.");
+async function exists(root: string, ref: string): Promise<boolean> {
+  try {
+    await git(root, ["show-ref", "--verify", "--quiet", ref]);
+    return true;
+  } catch {
+    return false;
   }
-  return ref;
+}
+
+/**
+ * The main branch of the remote, as GitHub compares: the branch of `origin/HEAD`,
+ * else `origin/main` or `origin/master`. Without a remote, the local `main` or `master`.
+ */
+async function mainBranch(root: string): Promise<string> {
+  const remotes = (await git(root, ["remote"])).split("\n");
+  if (remotes.includes("origin")) {
+    try {
+      return (await git(root, ["rev-parse", "--abbrev-ref", "origin/HEAD"])).trim();
+    } catch {
+      // Repositories created with `git init` and then pushed have no origin/HEAD.
+    }
+  }
+  const [prefix, refs] = remotes.includes("origin")
+    ? ["origin/", "refs/remotes/origin/"]
+    : ["", "refs/heads/"];
+  for (const name of ["main", "master"]) {
+    if (await exists(root, refs + name)) {
+      return prefix + name;
+    }
+  }
+  throw new NoDiff(
+    remotes.includes("origin")
+      ? "No main branch: origin/HEAD is not set, and there is no origin/main or origin/master. Run `git remote set-head origin --auto`."
+      : "No main branch: there is no main or master branch.",
+  );
 }
 
 export async function resolve(root: string, choice: Choice): Promise<Diff> {
@@ -66,7 +97,7 @@ export async function resolve(root: string, choice: Choice): Promise<Diff> {
     case "main": {
       const main = await mainBranch(root);
       const base = (await git(root, ["merge-base", main, head])).trim();
-      return { base, head: undefined };
+      return { base, head: undefined, main };
     }
     case "commit": {
       const sha = await picked(root, choice.commit.sha);

@@ -13,7 +13,7 @@ VS Code and Cursor extension that shows the files of a chosen diff as a tree, in
 4. Click the compare icon (**Choose the Diff**) in the title of the sidebar, and choose which changes to show:
    - **Uncommitted changes**: the current files compared with the last commit.
    - **Last commit**: only the changes of the last commit.
-   - **Compared to main**: the current files compared with the point where the branch left the main branch, with the uncommitted changes.
+   - **Compared to main**: the current files compared with the point where the branch left the main branch, with the uncommitted changes. Apart from those, it is the diff of the GitHub pull request. The main branch is the one of `origin/HEAD`, else `origin/main` or `origin/master`, else the local `main` or `master` when there is no `origin`. Git Changes does not fetch: fetch to compare with the latest main branch.
    - **Range of commits…**: pick the first commit, then the last commit.
    - One of the last 10 commits: only the changes of that commit.
 

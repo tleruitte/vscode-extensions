@@ -41,11 +41,16 @@ export class Files implements vscode.TreeDataProvider<vscode.TreeItem>, vscode.D
     const choice = root ? this.choices.of(root) : this.choices.shared;
     let files: Change[] = [];
     let message: string | undefined;
+    let description = describe(choice);
     if (!root) {
       message = "No Git repository in the workspace.";
     } else {
       try {
-        files = await changes(root, await resolve(root, choice));
+        const diff = await resolve(root, choice);
+        files = await changes(root, diff);
+        if (diff.main) {
+          description = `Compared to ${diff.main}`;
+        }
         message = files.length ? undefined : "No changes.";
       } catch (e) {
         message = e instanceof NoDiff ? e.message : `Cannot read the changes: ${(e as Error).message}`;
@@ -56,7 +61,7 @@ export class Files implements vscode.TreeDataProvider<vscode.TreeItem>, vscode.D
     }
     this.root = root;
     this.files = files;
-    this.view.description = describe(choice);
+    this.view.description = description;
     this.view.message = message;
     this.changed.fire();
   }
