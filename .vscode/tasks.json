@@ -4,20 +4,19 @@
     {
       "type": "npm",
       "script": "watch",
+      "path": "open-on-github",
       "problemMatcher": "$tsc-watch",
       "isBackground": true,
-      "group": {
-        "kind": "build",
-        "isDefault": true
-      },
-      "label": "npm: watch"
+      "group": "build",
+      "label": "npm: watch - open-on-github"
     },
     {
       "type": "npm",
       "script": "compile",
+      "path": "open-on-github",
       "problemMatcher": "$tsc",
       "group": "build",
-      "label": "npm: compile"
+      "label": "npm: compile - open-on-github"
     }
   ]
 }

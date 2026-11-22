@@ -1,0 +1,49 @@
+# Publishes one extension to Open VSX when a tag <extension>-v<version> is pushed
+# (scripts/release.sh makes the tag).
+name: Release
+
+on:
+  push:
+    tags:
+      - "*-v*"
+
+jobs:
+  publish:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+
+      - name: Read the extension and version from the tag
+        id: tag
+        run: |
+          extension="${GITHUB_REF_NAME%-v*}"
+          version="${GITHUB_REF_NAME##*-v}"
+          if [ ! -f "$extension/package.json" ]; then
+            echo "::error::No extension named $extension: $extension/package.json is missing."
+            exit 1
+          fi
+          actual=$(node --print "require('./$extension/package.json').version")
+          if [ "$actual" != "$version" ]; then
+            echo "::error::The tag says $version, but $extension/package.json says $actual."
+            exit 1
+          fi
+          echo "extension=$extension" >> "$GITHUB_OUTPUT"
+          echo "version=$version" >> "$GITHUB_OUTPUT"
+
+      - name: Install
+        working-directory: ${{ steps.tag.outputs.extension }}
+        run: npm ci
+
+      - name: Package
+        working-directory: ${{ steps.tag.outputs.extension }}
+        run: npx --yes @vscode/vsce package --out "${{ steps.tag.outputs.extension }}-${{ steps.tag.outputs.version }}.vsix"
+
+      - name: Publish to Open VSX
+        working-directory: ${{ steps.tag.outputs.extension }}
+        env:
+          OVSX_PAT: ${{ secrets.OVSX_PAT }}
+        run: npx --yes ovsx publish "${{ steps.tag.outputs.extension }}-${{ steps.tag.outputs.version }}.vsix" --pat "$OVSX_PAT"

@@ -7,7 +7,8 @@
   "publisher": "tleruitte",
   "repository": {
     "type": "git",
-    "url": "https://github.com/tleruitte/open-on-github.git"
+    "url": "https://github.com/tleruitte/vscode-extensions.git",
+    "directory": "open-on-github"
   },
   "engines": {
     "vscode": "^1.85.0"
