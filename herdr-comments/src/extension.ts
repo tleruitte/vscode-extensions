@@ -1,20 +1,46 @@
 import * as vscode from "vscode";
-import { NoteComment, Pending, Store } from "./comments";
+import { NoteComment, Pending, Store, isGeneral } from "./comments";
 import { Panel } from "./panel";
+import { ReviewPage } from "./review";
+
+/** Gives the focus back to the Herdr Comments view. */
+const BACK_TO_VIEW = "herdrComments.pending.focus";
 
 export function activate(context: vscode.ExtensionContext): void {
   const store = new Store(context.workspaceState);
   const panel = new Panel(store);
+  const review = new ReviewPage(store);
+  /** A save on the Review page closes it. */
+  const saved = async (id: string): Promise<void> => {
+    const p = store.get(id);
+    if (p && isGeneral(p)) {
+      await review.close();
+    }
+  };
 
   context.subscriptions.push(
     store,
     panel,
+    review,
     // The shortcut opens the same comment box as the "+" in the gutter.
     vscode.commands.registerCommand("herdrComments.add", () =>
       vscode.commands.executeCommand("workbench.action.addComment"),
     ),
-    vscode.commands.registerCommand("herdrComments.save", (reply: vscode.CommentReply) =>
-      store.add(reply),
+    vscode.commands.registerCommand(
+      "herdrComments.save",
+      async (reply: vscode.CommentReply) => {
+        const id = await store.add(reply);
+        if (id) {
+          await saved(id);
+        }
+      },
+    ),
+    // The keybindings say how to give the focus back after the save.
+    vscode.commands.registerCommand("herdrComments.addGeneral", (args?: { back?: string }) =>
+      review.add(args?.back),
+    ),
+    vscode.commands.registerCommand("herdrComments.addGeneralFromView", () =>
+      review.add(BACK_TO_VIEW),
     ),
     vscode.commands.registerCommand("herdrComments.cancelNew", (reply: vscode.CommentReply) =>
       reply.thread.dispose(),
@@ -22,22 +48,32 @@ export function activate(context: vscode.ExtensionContext): void {
     // Edit and Delete get a comment from the editor, or a row of the panel.
     vscode.commands.registerCommand(
       "herdrComments.edit",
-      async ({ id }: NoteComment | Pending) => {
-        await store.reveal(id);
+      async (comment: NoteComment | Pending) => {
+        const { id } = comment;
+        if (comment instanceof NoteComment || !isGeneral(comment)) {
+          await store.reveal(id);
+        } else {
+          await review.reveal(id, BACK_TO_VIEW);
+        }
         store.startEdit(id);
       },
     ),
     vscode.commands.registerCommand("herdrComments.delete", ({ id }: NoteComment | Pending) =>
       store.delete(id),
     ),
-    vscode.commands.registerCommand("herdrComments.saveEdit", (comment: NoteComment) =>
-      store.saveEdit(comment),
+    vscode.commands.registerCommand(
+      "herdrComments.saveEdit",
+      async (comment: NoteComment) => {
+        if (await store.saveEdit(comment)) {
+          await saved(comment.id);
+        }
+      },
     ),
     vscode.commands.registerCommand("herdrComments.cancelEdit", (comment: NoteComment) =>
       store.cancelEdit(comment),
     ),
     vscode.commands.registerCommand("herdrComments.reveal", (p: Pending) =>
-      store.reveal(p.id),
+      isGeneral(p) ? review.reveal(p.id, BACK_TO_VIEW) : store.reveal(p.id),
     ),
     vscode.commands.registerCommand("herdrComments.submit", () => panel.submit()),
     vscode.commands.registerCommand("herdrComments.start", () => panel.submit()),

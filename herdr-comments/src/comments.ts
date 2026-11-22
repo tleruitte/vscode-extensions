@@ -5,7 +5,8 @@ import { randomUUID } from "node:crypto";
 /**
  * A pending comment, as kept in the workspace state. The lines (1-based) and
  * the quoted code stay as they were when the comment was written, so the
- * agent gets the code that the person saw.
+ * agent gets the code that the person saw. A general comment is on no file:
+ * it has the URI of the Review page, no lines (0), and no quote.
  */
 export interface Pending {
   id: string;
@@ -17,6 +18,17 @@ export interface Pending {
 }
 
 const STATE_KEY = "herdrComments.pending";
+
+/** The read-only page that holds the general comments. */
+export const REVIEW_URI = vscode.Uri.from({ scheme: "herdr-comments", path: "/Review" });
+
+export function isGeneral(p: Pending): boolean {
+  return p.uri === REVIEW_URI.toString();
+}
+
+function isReview(uri: vscode.Uri): boolean {
+  return uri.toString() === REVIEW_URI.toString();
+}
 
 export class NoteComment implements vscode.Comment {
   mode = vscode.CommentMode.Preview;
@@ -45,6 +57,9 @@ export class Store implements vscode.Disposable {
   private pending: Pending[];
   private readonly changed = new vscode.EventEmitter<void>();
   readonly onDidChange = this.changed.event;
+  private readonly reviewAsked = new vscode.EventEmitter<void>();
+  /** The editor asked where the Review page can get a comment: a new comment box can open on it. */
+  readonly onDidAskReview = this.reviewAsked.event;
 
   constructor(private readonly state: vscode.Memento) {
     this.controller = vscode.comments.createCommentController(
@@ -55,46 +70,106 @@ export class Store implements vscode.Disposable {
       prompt: "Add a comment for the agent",
       placeHolder: "Comment for the agent",
     };
-    // Every line of a file can get a comment: the "+" in the gutter.
+    // Every line of a file can get a comment: the "+" in the gutter. On the
+    // Review page, only the line after the general comments can.
     this.controller.commentingRangeProvider = {
-      provideCommentingRanges: (doc) =>
-        doc.uri.scheme === "file"
+      provideCommentingRanges: (doc) => {
+        if (isReview(doc.uri)) {
+          this.reviewAsked.fire();
+          const line = this.newGeneralLine();
+          return [new vscode.Range(line, 0, line, 0)];
+        }
+        return doc.uri.scheme === "file"
           ? [new vscode.Range(0, 0, Math.max(doc.lineCount - 1, 0), 0)]
-          : [],
+          : [];
+      },
     };
     this.pending = state.get<Pending[]>(STATE_KEY, []);
     for (const p of this.pending) {
+      // A general comment gets its line of the Review page below.
       const thread = this.controller.createCommentThread(
         vscode.Uri.parse(p.uri),
-        new vscode.Range(p.from - 1, 0, p.to - 1, 0),
+        isGeneral(p)
+          ? new vscode.Range(0, 0, 0, 0)
+          : new vscode.Range(p.from - 1, 0, p.to - 1, 0),
         [],
       );
       this.show(thread, p);
     }
+    this.placeGenerals();
   }
 
   dispose(): void {
     this.controller.dispose();
     this.changed.dispose();
+    this.reviewAsked.dispose();
   }
 
-  /** The pending comments, by file and line. */
+  /** The pending comments: the general comments first, then the others by file and line. */
   list(): Pending[] {
     return [...this.pending].sort(
-      (a, b) => a.uri.localeCompare(b.uri) || a.from - b.from,
+      (a, b) =>
+        Number(isGeneral(b)) - Number(isGeneral(a)) ||
+        a.uri.localeCompare(b.uri) ||
+        a.from - b.from,
     );
+  }
+
+  /** The general comments, in the order they were written. */
+  generals(): Pending[] {
+    return this.pending.filter(isGeneral);
+  }
+
+  /**
+   * The line of a general comment on the Review page. Each general comment has
+   * a line of its own after the first line, because on a line that has a
+   * comment, the editor opens that comment instead of a new comment box.
+   */
+  private generalLine(p: Pending): number {
+    return this.generals().indexOf(p) + 1;
+  }
+
+  /** The line of the Review page for a new general comment. */
+  newGeneralLine(): number {
+    return this.generals().length + 1;
+  }
+
+  /** Puts the comment of each general comment on its line of the Review page. */
+  private placeGenerals(): void {
+    for (const p of this.generals()) {
+      const thread = this.threads.get(p.id);
+      const line = this.generalLine(p);
+      if (thread) {
+        thread.range = new vscode.Range(line, 0, line, 0);
+      }
+    }
   }
 
   get(id: string): Pending | undefined {
     return this.pending.find((p) => p.id === id);
   }
 
-  /** Saves the text of a new comment box as a pending comment. */
-  async add(reply: vscode.CommentReply): Promise<void> {
+  /** Saves the text of a new comment box as a pending comment, and gives its ID. */
+  async add(reply: vscode.CommentReply): Promise<string | undefined> {
     const text = reply.text.trim();
     const { thread } = reply;
     if (!text || !thread.range) {
-      return;
+      return undefined;
+    }
+    if (isReview(thread.uri)) {
+      const p: Pending = {
+        id: randomUUID(),
+        uri: thread.uri.toString(),
+        from: 0,
+        to: 0,
+        quote: "",
+        text,
+      };
+      this.show(thread, p);
+      this.pending.push(p);
+      this.placeGenerals();
+      await this.save();
+      return p.id;
     }
     const doc = await vscode.workspace.openTextDocument(thread.uri);
     const { start, end } = thread.range;
@@ -111,6 +186,7 @@ export class Store implements vscode.Disposable {
     this.show(thread, p);
     this.pending.push(p);
     await this.save();
+    return p.id;
   }
 
   startEdit(id: string): void {
@@ -125,18 +201,20 @@ export class Store implements vscode.Disposable {
     thread.comments = [...thread.comments];
   }
 
-  async saveEdit(comment: NoteComment): Promise<void> {
+  /** Saves the new text of a comment, and says whether it did. */
+  async saveEdit(comment: NoteComment): Promise<boolean> {
     const p = this.get(comment.id);
     // The comment box writes the new text into the body of the comment.
     const body = comment.body;
     const text = (typeof body === "string" ? body : body.value).trim();
     if (!p || !text) {
       this.cancelEdit(comment);
-      return;
+      return false;
     }
     p.text = text;
     this.render(p);
     await this.save();
+    return true;
   }
 
   cancelEdit(comment: NoteComment): void {
@@ -150,6 +228,7 @@ export class Store implements vscode.Disposable {
     this.threads.get(id)?.dispose();
     this.threads.delete(id);
     this.pending = this.pending.filter((p) => p.id !== id);
+    this.placeGenerals();
     await this.save();
   }
 
@@ -167,8 +246,9 @@ export class Store implements vscode.Disposable {
     if (!p) {
       return;
     }
+    const line = isGeneral(p) ? this.generalLine(p) : p.from - 1;
     await vscode.window.showTextDocument(vscode.Uri.parse(p.uri), {
-      selection: new vscode.Range(p.from - 1, 0, p.from - 1, 0),
+      selection: new vscode.Range(line, 0, line, 0),
     });
     const thread = this.threads.get(id);
     if (thread) {
@@ -186,7 +266,11 @@ export class Store implements vscode.Disposable {
   private render(p: Pending): void {
     const thread = this.threads.get(p.id);
     if (thread) {
-      thread.label = p.from === p.to ? `Line ${p.from}` : `Lines ${p.from}-${p.to}`;
+      thread.label = isGeneral(p)
+        ? "General"
+        : p.from === p.to
+          ? `Line ${p.from}`
+          : `Lines ${p.from}-${p.to}`;
       thread.comments = [new NoteComment(p.id, p.text)];
     }
   }
@@ -205,23 +289,38 @@ export function relativePath(p: Pending): string {
   );
 }
 
-/** The comments as one review message, in the shape of the Herdr reviewer. */
+/**
+ * The comments as one review message, in the shape of the Herdr reviewer. It
+ * names the folders of the commented files, or all folders of the window when
+ * the review has only general comments.
+ */
 export function reviewMessage(list: Pending[]): string {
-  const roots = [
-    ...new Set(
-      list.map((p) => {
-        const uri = vscode.Uri.parse(p.uri);
-        return (
-          vscode.workspace.getWorkspaceFolder(uri)?.uri.fsPath ??
-          path.dirname(uri.fsPath)
-        );
-      }),
-    ),
-  ];
+  const onLines = list.filter((p) => !isGeneral(p));
+  const roots = onLines.length
+    ? [
+        ...new Set(
+          onLines.map((p) => {
+            const uri = vscode.Uri.parse(p.uri);
+            return (
+              vscode.workspace.getWorkspaceFolder(uri)?.uri.fsPath ??
+              path.dirname(uri.fsPath)
+            );
+          }),
+        ),
+      ]
+    : (vscode.workspace.workspaceFolders ?? [])
+        .filter((f) => f.uri.scheme === "file")
+        .map((f) => f.uri.fsPath);
   const n = list.length;
   const parts = list.map((p) => {
+    if (isGeneral(p)) {
+      return `### General comment\n${p.text}`;
+    }
     const span = p.from === p.to ? `line ${p.from}` : `lines ${p.from}-${p.to}`;
     return `### ${relativePath(p)}, ${span}\n${p.quote}\n\nComment: ${p.text}`;
   });
-  return `Code review of ${roots.join(", ")}: ${n} comment${n > 1 ? "s" : ""}. The line numbers and the code are as they were when each comment was written.\n\n${parts.join("\n\n")}`;
+  const asWritten = onLines.length
+    ? " The line numbers and the code are as they were when each comment was written."
+    : "";
+  return `Code review of ${roots.join(", ")}: ${n} comment${n > 1 ? "s" : ""}.${asWritten}\n\n${parts.join("\n\n")}`;
 }

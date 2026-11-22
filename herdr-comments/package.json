@@ -49,6 +49,17 @@
         "category": "Herdr Comments"
       },
       {
+        "command": "herdrComments.addGeneral",
+        "title": "Add General Herdr Comment",
+        "category": "Herdr Comments"
+      },
+      {
+        "command": "herdrComments.addGeneralFromView",
+        "title": "Add General Comment",
+        "category": "Herdr Comments",
+        "icon": "$(add)"
+      },
+      {
         "command": "herdrComments.submit",
         "title": "Submit Comments",
         "category": "Herdr Comments",
@@ -106,6 +117,34 @@
         "when": "editorTextFocus && activeCursorHasCommentingRange"
       },
       {
+        "command": "herdrComments.addGeneral",
+        "key": "ctrl+shift+c",
+        "when": "editorTextFocus && !activeCursorHasCommentingRange && !commentEditorFocused && (resourceScheme != file || isInDiffLeftEditor)"
+      },
+      {
+        "command": "herdrComments.addGeneral",
+        "args": { "back": "workbench.action.focusSideBar" },
+        "key": "ctrl+shift+c",
+        "when": "sideBarFocus && !editorTextFocus && !terminalFocus"
+      },
+      {
+        "command": "herdrComments.addGeneral",
+        "args": { "back": "workbench.action.focusAuxiliaryBar" },
+        "key": "ctrl+shift+c",
+        "when": "auxiliaryBarFocus && !editorTextFocus && !terminalFocus"
+      },
+      {
+        "command": "herdrComments.addGeneral",
+        "args": { "back": "workbench.action.focusPanel" },
+        "key": "ctrl+shift+c",
+        "when": "panelFocus && !editorTextFocus && !terminalFocus"
+      },
+      {
+        "command": "herdrComments.addGeneral",
+        "key": "ctrl+shift+c",
+        "when": "!editorTextFocus && !sideBarFocus && !auxiliaryBarFocus && !panelFocus && !terminalFocus && !commentEditorFocused"
+      },
+      {
         "command": "editor.action.submitComment",
         "key": "enter",
         "when": "commentEditorFocused && commentController == herdrComments"
@@ -135,7 +174,7 @@
     "viewsWelcome": [
       {
         "view": "herdrComments.pending",
-        "contents": "No pending comments.\nPut the cursor on a line or select some lines, then click + in the gutter or press ⌃⇧C."
+        "contents": "No pending comments.\nPut the cursor on a line or select some lines, then click + in the gutter or press ⌃⇧C.\nFor a general comment, on no file, click + above or press ⌃⇧C outside an editor."
       }
     ],
     "menus": {
@@ -147,10 +186,16 @@
         { "command": "herdrComments.saveEdit", "when": "false" },
         { "command": "herdrComments.cancelEdit", "when": "false" },
         { "command": "herdrComments.reveal", "when": "false" },
+        { "command": "herdrComments.addGeneralFromView", "when": "false" },
         { "command": "herdrComments.start", "when": "herdrComments.startsAgent" },
         { "command": "herdrComments.submit", "when": "!herdrComments.startsAgent" }
       ],
       "view/title": [
+        {
+          "command": "herdrComments.addGeneralFromView",
+          "when": "view == herdrComments.pending",
+          "group": "navigation@0"
+        },
         {
           "command": "herdrComments.submit",
           "when": "view == herdrComments.pending && !herdrComments.startsAgent",

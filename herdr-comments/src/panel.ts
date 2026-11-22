@@ -1,6 +1,6 @@
 import * as vscode from "vscode";
 import * as path from "node:path";
-import { Pending, Store, relativePath, reviewMessage } from "./comments";
+import { Pending, Store, isGeneral, relativePath, reviewMessage } from "./comments";
 import * as herdr from "./herdr";
 
 /** How often the panel checks the agents while it shows. */
@@ -62,13 +62,17 @@ export class Panel implements vscode.TreeDataProvider<Pending>, vscode.Disposabl
 
   getTreeItem(p: Pending): vscode.TreeItem {
     const lines = p.from === p.to ? `${p.from}` : `${p.from}-${p.to}`;
-    const item = new vscode.TreeItem(`${path.basename(relativePath(p))}:${lines}`);
+    const item = new vscode.TreeItem(
+      isGeneral(p) ? "General" : `${path.basename(relativePath(p))}:${lines}`,
+    );
     item.id = p.id;
     item.description = p.text.split("\n")[0];
-    item.tooltip = new vscode.MarkdownString(
-      `**${relativePath(p)}**, ${p.from === p.to ? "line" : "lines"} ${lines}\n\n` +
-        "```\n" + p.quote + "\n```\n\n" + p.text,
-    );
+    item.tooltip = isGeneral(p)
+      ? new vscode.MarkdownString("**General comment**\n\n" + p.text)
+      : new vscode.MarkdownString(
+          `**${relativePath(p)}**, ${p.from === p.to ? "line" : "lines"} ${lines}\n\n` +
+            "```\n" + p.quote + "\n```\n\n" + p.text,
+        );
     item.iconPath = new vscode.ThemeIcon("comment");
     item.contextValue = "herdrComment";
     item.command = {
