@@ -1,5 +1,5 @@
 ---
-status: specified
+status: started
 ---
 
 # Herdr Comments for Obsidian
