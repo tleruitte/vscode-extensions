@@ -60,6 +60,12 @@
         "icon": "$(add)"
       },
       {
+        "command": "herdrComments.addGeneralFromGitChanges",
+        "title": "Add General Herdr Comment",
+        "category": "Herdr Comments",
+        "icon": "$(add)"
+      },
+      {
         "command": "herdrComments.submit",
         "title": "Submit Comments",
         "category": "Herdr Comments",
@@ -187,6 +193,7 @@
         { "command": "herdrComments.cancelEdit", "when": "false" },
         { "command": "herdrComments.reveal", "when": "false" },
         { "command": "herdrComments.addGeneralFromView", "when": "false" },
+        { "command": "herdrComments.addGeneralFromGitChanges", "when": "false" },
         { "command": "herdrComments.start", "when": "herdrComments.startsAgent" },
         { "command": "herdrComments.submit", "when": "!herdrComments.startsAgent" }
       ],
@@ -195,6 +202,11 @@
           "command": "herdrComments.addGeneralFromView",
           "when": "view == herdrComments.pending",
           "group": "navigation@0"
+        },
+        {
+          "command": "herdrComments.addGeneralFromGitChanges",
+          "when": "view == gitChanges.files",
+          "group": "navigation@2"
         },
         {
           "command": "herdrComments.submit",

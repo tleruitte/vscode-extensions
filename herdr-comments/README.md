@@ -10,7 +10,7 @@ VS Code and Cursor extension that sends your comments on lines of code, as one r
 
 3. Put the cursor on a line, or select some lines. Click **+** in the gutter, or press `⌃⇧C` (**Add Herdr Comment**). Write the comment and press `Enter` or click **Add Comment**. `⇧Enter` or `⌘Enter` starts a new line. Add more comments in any file of the folder.
 
-   For a general comment, on no file (for example "Also add tests"), press `⌃⇧C` outside an editor (for example in the Explorer or in [Git Changes](https://github.com/tleruitte/vscode-extensions/tree/main/git-changes)), in an editor that is not a file (for example the old side of a diff), or click **+** in the title of the **Herdr Comments** view. The **Review** page opens with a comment box. `Enter` saves the comment, closes the page, and gives the focus back to where it was. The terminal keeps `⌃⇧C`.
+   For a general comment, on no file (for example "Also add tests"), press `⌃⇧C` outside an editor (for example in the Explorer or in [Git Changes](https://github.com/tleruitte/vscode-extensions/tree/main/git-changes)), in an editor that is not a file (for example the old side of a diff), or click **+** in the title of the **Herdr Comments** view or of Git Changes. The **Review** page opens with a comment box. `Enter` saves the comment, closes the page, and gives the focus back to where it was. The terminal keeps `⌃⇧C`.
 
 4. The **Herdr Comments** view lists the pending comments. It is in the Explorer. To move it to the Secondary Side Bar, on the right, run **View: Move View**, choose **Herdr Comments**, then **New Secondary Side Bar Entry**. Click a comment to go to it; edit or delete it there or in the editor. The comments stay when the window reloads.
 

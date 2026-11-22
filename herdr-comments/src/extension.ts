@@ -5,6 +5,8 @@ import { ReviewPage } from "./review";
 
 /** Gives the focus back to the Herdr Comments view. */
 const BACK_TO_VIEW = "herdrComments.pending.focus";
+/** Gives the focus back to the view of the Git Changes extension. */
+const BACK_TO_GIT_CHANGES = "gitChanges.files.focus";
 
 export function activate(context: vscode.ExtensionContext): void {
   const store = new Store(context.workspaceState);
@@ -41,6 +43,10 @@ export function activate(context: vscode.ExtensionContext): void {
     ),
     vscode.commands.registerCommand("herdrComments.addGeneralFromView", () =>
       review.add(BACK_TO_VIEW),
+    ),
+    // A button in the title of Git Changes, which shows only when that extension is installed.
+    vscode.commands.registerCommand("herdrComments.addGeneralFromGitChanges", () =>
+      review.add(BACK_TO_GIT_CHANGES),
     ),
     vscode.commands.registerCommand("herdrComments.cancelNew", (reply: vscode.CommentReply) =>
       reply.thread.dispose(),
