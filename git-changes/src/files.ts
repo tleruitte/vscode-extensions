@@ -9,6 +9,9 @@ import { Row, clickOpensDiff } from "./open";
 import { Repos } from "./repos";
 import { Node, buildTree } from "./tree";
 
+/** How long the tree waits for more changes before it refreshes. */
+const REFRESH_DELAY_MS = 300;
+
 /** The changes of one repository in its chosen diff. */
 interface Shown {
   root: string;
@@ -44,6 +47,7 @@ export class Files implements vscode.TreeDataProvider<Node>, vscode.Disposable {
   private nodes: Node[] = [];
   /** Counts the refreshes, so only the last one shows. */
   private generation = 0;
+  private timer: NodeJS.Timeout | undefined;
 
   constructor(
     private readonly repos: Repos,
@@ -55,19 +59,28 @@ export class Files implements vscode.TreeDataProvider<Node>, vscode.Disposable {
     this.disposables.push(
       this.view,
       this.changed,
-      repos.onDidChange(() => void this.refresh()),
+      // Git reports a change of each file of an agent, so the tree waits for the last one.
+      repos.onDidChange(() => this.refreshSoon()),
       choices.onDidChange(() => void this.refresh()),
+      this.view.onDidChangeVisibility(() => this.view.visible && this.refreshSoon()),
     );
     void this.refresh();
   }
 
   dispose(): void {
+    clearTimeout(this.timer);
     for (const d of this.disposables) {
       d.dispose();
     }
   }
 
+  private refreshSoon(): void {
+    clearTimeout(this.timer);
+    this.timer = setTimeout(() => void this.refresh(), REFRESH_DELAY_MS);
+  }
+
   private async refresh(): Promise<void> {
+    clearTimeout(this.timer);
     const generation = ++this.generation;
     const roots = this.repos.list().map((r) => r.rootUri.fsPath);
     const all = await Promise.all(roots.map((root) => show(root, this.choices)));
