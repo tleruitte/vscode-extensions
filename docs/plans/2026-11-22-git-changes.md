@@ -43,8 +43,9 @@ Success: the person can review a commit, a range of commits, or a whole branch, 
 
 7. **Change marks in the gutter.** In a normal editor, the gutter shows the added, changed, and deleted lines of the chosen diff, also when they are already committed. A click on a mark shows the change in the editor, with the removed lines.
    - In "uncommitted changes", the extension adds no marks: the built-in Git marks are already correct.
-   - In the other choices, the marks of the chosen diff replace the built-in Git marks. If the editor cannot replace them cleanly, the extension draws its own marks. Then a deleted line shows only as a small mark, and a click on a mark shows nothing.
-   - A small test in VS Code and Cursor comes first, to find which of the two ways works.
+   - In the other choices, the editor draws the marks of the chosen diff with its own marks, in its own style. VS Code and Cursor cannot hide the built-in Git marks for one extension, so both show. In the commit and range choices, a file that opens in a normal editor has no uncommitted changes, so only the marks of the chosen diff show. In "compared to the main branch", a file with uncommitted changes also shows the built-in Git marks, mostly on the same lines.
+   - The extension does not draw marks of its own: the built-in Git marks would still show next to them, and a click on them would show nothing.
+   - To give the editor the marks of the chosen diff, the extension shows as an empty "Git Changes" entry in the Source Control view, only while a choice other than "uncommitted changes" is active.
 
 8. **Diff button.** Each file row also has a button that opens the diff of that one file. The built-in "Open Changes" button of the editor is not enough: it always compares with the last commit.
 
