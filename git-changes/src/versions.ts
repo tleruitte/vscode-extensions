@@ -32,6 +32,7 @@ export class Versions implements vscode.TextDocumentContentProvider, vscode.Disp
 
   async provideTextDocumentContent(uri: vscode.Uri): Promise<string> {
     const version = JSON.parse(uri.query) as Version;
-    return version.rev ? git(version.root, ["show", `${version.rev}:${version.path}`]) : "";
+    const text = version.rev ? await git(version.root, ["show", `${version.rev}:${version.path}`]) : "";
+    return text.includes("\0") ? "Binary file" : text;
   }
 }

@@ -66,6 +66,12 @@
         "title": "Open Changes",
         "category": "Git Changes",
         "icon": "$(diff)"
+      },
+      {
+        "command": "gitChanges.openFile",
+        "title": "Open File",
+        "category": "Git Changes",
+        "icon": "$(go-to-file)"
       }
     ],
     "menus": {
@@ -80,6 +86,10 @@
         },
         {
           "command": "gitChanges.chooseInRepo",
+          "when": "false"
+        },
+        {
+          "command": "gitChanges.openFile",
           "when": "false"
         }
       ],
@@ -99,6 +109,11 @@
         {
           "command": "gitChanges.openDiff",
           "when": "view == gitChanges.files && viewItem == gitChangesFile",
+          "group": "inline@1"
+        },
+        {
+          "command": "gitChanges.openFile",
+          "when": "view == gitChanges.files && viewItem == gitChangesDiffFile",
           "group": "inline@1"
         }
       ]

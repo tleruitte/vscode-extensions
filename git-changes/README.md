@@ -25,7 +25,7 @@ VS Code and Cursor extension that shows the files of a chosen diff as a tree, in
    - A deleted file.
    - For the last commit, a commit, or a range of commits: a file that changed after that commit or range. Its row says **changed since**. The diff shows exactly the changes of that commit or range, between two read-only versions of the file.
 
-7. Click the diff icon (**Open Changes**) on a row to open the diff of that file for the chosen diff. When the file did not change since, the right side of the diff is the current file, so you can edit it and comment on it.
+7. Click the diff icon (**Open Changes**) on a row to open the diff of that file for the chosen diff. When the file did not change since, the right side of the diff is the current file, so you can edit it and comment on it. On a row that a click opens as a diff, the icon (**Open File**) opens the current file instead.
 
 8. In a normal editor, the gutter shows the added, changed, and deleted lines of the chosen diff, also when they are committed. Click a mark to see the change, with the removed lines. For the uncommitted changes, these are the marks of Git. For the other choices:
    - The marks of Git, of the uncommitted changes, show too. Compared to main, a file with uncommitted changes has both, mostly on the same lines.

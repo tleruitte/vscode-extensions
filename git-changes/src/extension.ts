@@ -4,7 +4,7 @@ import { Decorations } from "./decorations";
 import { Files } from "./files";
 import { recentCommits } from "./git";
 import { Gutter } from "./gutter";
-import { Row, openDiff, openRow } from "./open";
+import { Row, openDiff, openFile, openRow } from "./open";
 import { pickChoice } from "./picker";
 import { Repos } from "./repos";
 import { File, Repo } from "./tree";
@@ -30,6 +30,7 @@ export function activate(context: vscode.ExtensionContext): void {
     vscode.commands.registerCommand("gitChanges.open", (row: Row) => openRow(row)),
     // The buttons of a row get its node.
     vscode.commands.registerCommand("gitChanges.openDiff", (node: File) => openDiff(node.row)),
+    vscode.commands.registerCommand("gitChanges.openFile", (node: File) => openFile(node.row)),
     // With more than one repository, the title offers no commits: each repository row does.
     vscode.commands.registerCommand("gitChanges.choose", async () => {
       const all = repos.list();

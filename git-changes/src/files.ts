@@ -1,10 +1,11 @@
 import * as vscode from "vscode";
+import * as fs from "node:fs";
 import * as path from "node:path";
 import { Choices, describe } from "./choice";
 import { Decorations, rowUri } from "./decorations";
 import { NoDiff, Status, changes, resolve } from "./diff";
 import { Gutter } from "./gutter";
-import { Row } from "./open";
+import { Row, clickOpensDiff } from "./open";
 import { Repos } from "./repos";
 import { Node, buildTree } from "./tree";
 
@@ -145,7 +146,12 @@ export class Files implements vscode.TreeDataProvider<Node>, vscode.Disposable {
           .filter(Boolean)
           .join(" · ");
         item.command = { command: "gitChanges.open", title: "Open", arguments: [node.row] };
-        item.contextValue = "gitChangesFile";
+        // When a click opens the diff, the button opens the current file, if there is one.
+        item.contextValue = !clickOpensDiff(node.row)
+          ? "gitChangesFile"
+          : fs.existsSync(path.join(root, change.path))
+            ? "gitChangesDiffFile"
+            : "gitChangesGoneFile";
         return item;
       }
     }
