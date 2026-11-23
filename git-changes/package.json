@@ -156,6 +156,23 @@
           "default": false,
           "scope": "application",
           "description": "Hide the test files in the list of Git Changes. The button in the title of Git Changes changes it, for all the windows."
+        },
+        "gitChanges.testFiles": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "default": [
+            "**/*.test.*",
+            "**/*.spec.*",
+            "**/__tests__/**",
+            "**/test/**",
+            "**/tests/**",
+            "**/__snapshots__/**",
+            "**/__mocks__/**"
+          ],
+          "scope": "resource",
+          "markdownDescription": "The test files that the filter of Git Changes hides, as glob patterns of the paths from the root of the repository: `**` for any folders, `*` and `?` in one name, and `{a,b}` for one of the alternatives. A value replaces the default list."
         }
       }
     }

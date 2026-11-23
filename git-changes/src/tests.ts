@@ -1,24 +1,25 @@
 import * as vscode from "vscode";
 import { globRegExp } from "./glob";
 
-/** The test files: the patterns of their paths, from the root of the repository. */
-const PATTERNS = [
-  "**/*.test.*",
-  "**/*.spec.*",
-  "**/__tests__/**",
-  "**/test/**",
-  "**/tests/**",
-  "**/__snapshots__/**",
-  "**/__mocks__/**",
-];
-
 const HIDE = "hideTestFiles";
 
-const patterns = PATTERNS.map(globRegExp);
+/** The compiled patterns, by their text. */
+let compiled: { key: string; patterns: RegExp[] } | undefined;
 
-/** The path is the one of a test file. The path is from the root of the repository, with `/`. */
-export function isTest(path: string): boolean {
-  return patterns.some((p) => p.test(path));
+/**
+ * Tells whether a file of the repository at `root` is a test, from the
+ * patterns of the preference. The path is from the root, with `/`.
+ */
+export function testMatcher(root: string): (path: string) => boolean {
+  const globs = vscode.workspace
+    .getConfiguration("gitChanges", vscode.Uri.file(root))
+    .get<string[]>("testFiles", []);
+  const key = JSON.stringify(globs);
+  if (compiled?.key !== key) {
+    compiled = { key, patterns: globs.map(globRegExp) };
+  }
+  const { patterns } = compiled;
+  return (path) => patterns.some((p) => p.test(path));
 }
 
 /** The test files are hidden, in all the windows: a user setting keeps the state, and tells each window when it changes. */

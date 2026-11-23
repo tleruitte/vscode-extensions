@@ -7,7 +7,7 @@ import { NoDiff, Status, changes, resolve } from "./diff";
 import { Gutter } from "./gutter";
 import { Row, clickOpensDiff } from "./open";
 import { Repos } from "./repos";
-import { isTest, testsHidden } from "./tests";
+import { testMatcher, testsHidden } from "./tests";
 import { Node, buildTree } from "./tree";
 
 const VIEW = "gitChanges.files";
@@ -155,27 +155,30 @@ export class Files implements vscode.TreeDataProvider<Node>, vscode.Disposable {
     }
     // The filter hides rows only: the colors and the marks in the gutter stay.
     const hide = testsHidden();
-    const visible = (s: Shown) => (hide ? s.rows.filter((r) => !isTest(r.change.path)) : s.rows);
-    const hidden = hide ? all.reduce((n, s) => n + s.rows.filter((r) => isTest(r.change.path)).length, 0) : 0;
+    const split = all.map((s) => {
+      const isTest = testMatcher(s.root);
+      const rows = hide ? s.rows.filter((r) => !isTest(r.change.path)) : s.rows;
+      const message = s.message ?? (rows.length ? undefined : "Only test files changed.");
+      return { ...s, rows, message, hidden: s.rows.length - rows.length };
+    });
+    const hidden = split.reduce((n, s) => n + s.hidden, 0);
     const count = hidden ? ` · ${hidden} test ${hidden === 1 ? "file" : "files"} hidden` : "";
-    const message = (s: Shown, rows: Row[]) => s.message ?? (rows.length ? undefined : "Only test files changed.");
-    if (all.length === 1) {
-      const [only] = all;
-      const rows = visible(only);
-      this.nodes = buildTree(only.root, rows);
+    if (split.length === 1) {
+      const [only] = split;
+      this.nodes = buildTree(only.root, only.rows);
       this.view.description = only.description + count;
-      this.view.message = message(only, rows);
+      this.view.message = only.message;
     } else {
-      this.nodes = all.map((s): Node => {
-        const rows = visible(s);
-        const text = message(s, rows);
-        return {
+      this.nodes = split.map(
+        (s): Node => ({
           kind: "repo",
           root: s.root,
           description: s.description,
-          children: text ? [{ kind: "message", root: s.root, text }] : buildTree(s.root, rows),
-        };
-      });
+          children: s.message
+            ? [{ kind: "message", root: s.root, text: s.message }]
+            : buildTree(s.root, s.rows),
+        }),
+      );
       this.view.description = describe(this.choices.shared) + count;
       this.view.message = all.length ? undefined : "No Git repository in the workspace.";
     }
