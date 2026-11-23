@@ -21,7 +21,7 @@ VS Code and Cursor extension that shows the files of a chosen diff as a tree, in
 
 5. The sidebar shows the changed files as a folder tree. As in the Explorer, the name and the letter on the right show the status: added (A), modified (M), deleted (D), renamed (R), or untracked (U). The status is the one of the chosen diff: compared to main, a file that the branch added shows as added, also when it is committed. A renamed file shows its old name after its name.
 
-6. Click the filter icon (**Hide Test Files**) in the title of the sidebar to hide the test files, for example `*.test.*`, `*.spec.*`, and the files in `__tests__/`, `test/`, `tests/`, `__snapshots__/`, and `__mocks__/`. Click it again (**Show Test Files**) to show them. The choice applies to all the windows, and stays after a restart.
+6. Click the filter icon (**Hide Test Files**) in the title of the sidebar to hide the test files, for example `*.test.*`, `*.spec.*`, and the files in `__tests__/`, `test/`, `tests/`, `__snapshots__/`, and `__mocks__/`. Click it again (**Show Test Files**) to show them. The choice applies to all the windows, and stays after a restart. The filter hides rows of the list only: the colors of the files and the marks in the gutter stay. When the diff has only test files, the sidebar says **Only test files changed.**
 
 7. Click a file to open it in a normal editor. Two cases open the diff of the file instead:
    - A deleted file.

@@ -156,20 +156,24 @@ export class Files implements vscode.TreeDataProvider<Node>, vscode.Disposable {
     // The filter hides rows only: the colors and the marks in the gutter stay.
     const hide = testsHidden();
     const visible = (s: Shown) => (hide ? s.rows.filter((r) => !isTest(r.change.path)) : s.rows);
+    const message = (s: Shown, rows: Row[]) => s.message ?? (rows.length ? undefined : "Only test files changed.");
     if (all.length === 1) {
       const [only] = all;
-      this.nodes = buildTree(only.root, visible(only));
+      const rows = visible(only);
+      this.nodes = buildTree(only.root, rows);
       this.view.description = only.description;
-      this.view.message = only.message;
+      this.view.message = message(only, rows);
     } else {
-      this.nodes = all.map((s) => ({
-        kind: "repo",
-        root: s.root,
-        description: s.description,
-        children: s.message
-          ? [{ kind: "message", root: s.root, text: s.message }]
-          : buildTree(s.root, visible(s)),
-      }));
+      this.nodes = all.map((s): Node => {
+        const rows = visible(s);
+        const text = message(s, rows);
+        return {
+          kind: "repo",
+          root: s.root,
+          description: s.description,
+          children: text ? [{ kind: "message", root: s.root, text }] : buildTree(s.root, rows),
+        };
+      });
       this.view.description = describe(this.choices.shared);
       this.view.message = all.length ? undefined : "No Git repository in the workspace.";
     }
