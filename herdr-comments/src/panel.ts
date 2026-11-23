@@ -3,8 +3,20 @@ import * as path from "node:path";
 import { Pending, Store, isGeneral, relativePath, reviewMessage } from "./comments";
 import * as herdr from "./herdr";
 
-/** How often the panel checks the agents while it shows. */
+/** How often the panel checks the agents while it shows, or while comments wait for the agent. */
 const REFRESH_MS = 3_000;
+/** After a start, how long the next comments wait for the new agent before another agent can start. */
+const START_GRACE_MS = 60_000;
+
+/** What asks for a send: Submit, a save with the preference on, or the check of a waiting comment. */
+type Cause = "submit" | "save" | "wait";
+
+/** The preference to send each comment when the person saves it. */
+export function sendsImmediately(): boolean {
+  return vscode.workspace
+    .getConfiguration("herdrComments")
+    .get<boolean>("sendImmediately", true);
+}
 
 /** A key that changes when the target changes, so Submit never goes to an agent the person did not see. */
 function targetKey(target: herdr.Target): string {
@@ -29,6 +41,10 @@ export class Panel implements vscode.TreeDataProvider<Pending>, vscode.Disposabl
   private timer: NodeJS.Timeout | undefined;
   private refreshing: Promise<void> | undefined;
   private sending = false;
+  /** With the preference on, the pending comments wait for the agent, and go when it can get them. */
+  private waiting = false;
+  /** When the last start of an agent ended, so that the next comments go to that agent. */
+  private startedAt: number | undefined;
   private readonly disposables: vscode.Disposable[] = [];
 
   constructor(private readonly store: Store) {
@@ -45,6 +61,14 @@ export class Panel implements vscode.TreeDataProvider<Pending>, vscode.Disposabl
         void this.refresh();
       }),
       vscode.workspace.onDidChangeWorkspaceFolders(() => void this.refresh()),
+      vscode.workspace.onDidChangeConfiguration((e) => {
+        if (e.affectsConfiguration("herdrComments.sendImmediately")) {
+          // Turned off, the waiting comments wait for Submit. Turned on, nothing goes before the next save.
+          this.waiting = false;
+          this.watch();
+          this.update();
+        }
+      }),
     );
     this.watch();
   }
@@ -83,13 +107,28 @@ export class Panel implements vscode.TreeDataProvider<Pending>, vscode.Disposabl
     return item;
   }
 
-  /** While the panel shows, it checks the agents again and again. */
+  /**
+   * While the panel shows, it checks the agents again and again. While
+   * comments wait for the agent, it does so also when it is hidden, and sends
+   * them when the agent can get them.
+   */
   private watch(): void {
     clearInterval(this.timer);
     this.timer = undefined;
-    if (this.view.visible) {
-      void this.refresh();
-      this.timer = setInterval(() => void this.refresh(), REFRESH_MS);
+    if (this.view.visible || this.waiting) {
+      void this.tick();
+      this.timer = setInterval(() => void this.tick(), REFRESH_MS);
+    }
+  }
+
+  private tick(): Promise<void> {
+    return this.waiting && sendsImmediately() ? this.deliver("wait") : this.refresh();
+  }
+
+  private wait(on: boolean): void {
+    if (this.waiting !== on) {
+      this.waiting = on;
+      this.watch();
     }
   }
 
@@ -176,9 +215,12 @@ export class Panel implements vscode.TreeDataProvider<Pending>, vscode.Disposabl
         : `No agent works in ${folder}. Open the Herdr window to start one.`;
     }
     const to = `To: ${herdr.describeAgent(target.agent)}.`;
-    return target.agent.status === "blocked"
-      ? `${to} It waits for your answer in Herdr: answer it there, then submit.`
-      : to;
+    if (target.agent.status !== "blocked") {
+      return to;
+    }
+    return sendsImmediately()
+      ? `${to} It waits for your answer in Herdr: the comments go after you answer it there.`
+      : `${to} It waits for your answer in Herdr: answer it there, then submit.`;
   }
 
   async chooseAgent(): Promise<void> {
@@ -202,52 +244,111 @@ export class Panel implements vscode.TreeDataProvider<Pending>, vscode.Disposabl
     }
   }
 
+  /** With the preference on, sends the pending comments after a save, or waits for the agent. */
+  async saved(): Promise<void> {
+    if (sendsImmediately()) {
+      await this.deliver("save");
+    }
+  }
+
   /** Sends all pending comments, or starts an agent with them when no agent works in the folder. */
-  async submit(): Promise<void> {
-    const list = this.store.list();
-    if (!list.length || this.sending) {
+  submit(): Promise<void> {
+    return this.deliver("submit");
+  }
+
+  /**
+   * Sends all pending comments, or starts an agent with them when no agent
+   * works in the folder. With the preference on, they go to the agent that is
+   * the default now, in the order they were written; when that agent waits
+   * for an answer, or a new agent starts, they wait. With the preference off,
+   * they go only to the agent that the panel showed.
+   */
+  private async deliver(cause: Cause): Promise<void> {
+    // A comment saved during a send goes after it, to the same agent.
+    if (this.sending || !this.store.list().length) {
+      if (!this.sending) {
+        this.wait(false);
+      }
       return;
     }
+    const auto = sendsImmediately();
     const before = this.shown;
-    this.error = undefined;
     await this.refresh();
-    const target = this.lookup?.target;
+    const lookup = this.lookup;
+    const target = lookup?.target;
     if (!target) {
+      if (cause !== "submit") {
+        this.fail(this.unavailable ?? "Herdr is not available.");
+      }
       return;
     }
     // The agent left or another one took its place: show the new one first.
-    if (targetKey(target) !== before) {
+    if (!auto && targetKey(target) !== before) {
       void vscode.window.showWarningMessage(
         "The agent that gets the comments changed. Look at the panel, then submit again.",
       );
       return;
     }
+    // A comment would answer the prompt of the agent.
     if (target.kind === "agent" && target.agent.status === "blocked") {
+      if (auto) {
+        this.wait(true);
+      }
       return;
     }
+    if (target.kind === "start") {
+      // The agent that started last does not show yet: the comments go to it when it does.
+      if (auto && this.startedAt !== undefined && Date.now() - this.startedAt < START_GRACE_MS) {
+        this.wait(true);
+        return;
+      }
+      if (!lookup.windowOpen) {
+        if (cause !== "submit") {
+          this.fail(`No agent works in ${path.basename(target.folder)}. Open the Herdr window to start one.`);
+        }
+        return;
+      }
+    }
+    const list = auto ? this.store.inOrder() : this.store.list();
     const text = reviewMessage(list);
     const n = `${list.length} comment${list.length > 1 ? "s" : ""}`;
+    const tell = (message: string): void => {
+      if (auto) {
+        vscode.window.setStatusBarMessage(`Herdr Comments: ${message}`, 5_000);
+      } else {
+        void vscode.window.showInformationMessage(message);
+      }
+    };
     this.sending = true;
+    this.error = undefined;
     this.update();
     try {
       if (target.kind === "agent") {
         await herdr.send(target.agent, text);
-        void vscode.window.showInformationMessage(
-          `Sent ${n} to ${herdr.describeAgent(target.agent)}.`,
-        );
+        tell(`Sent ${n} to ${herdr.describeAgent(target.agent)}.`);
       } else {
         await herdr.start(target.folder, this.program(), text, this.chatMod());
-        void vscode.window.showInformationMessage(
-          `Started ${herdr.programName(this.program())} in Herdr with ${n}.`,
-        );
+        this.startedAt = Date.now();
+        tell(`Started ${herdr.programName(this.program())} in Herdr with ${n}.`);
       }
-      this.sending = false;
-      await this.store.clear();
     } catch (e) {
       this.sending = false;
-      this.error = `Send failed: ${e instanceof Error ? e.message : String(e)}`;
-      void vscode.window.showErrorMessage(this.error);
-      this.update();
+      this.fail(`Send failed: ${e instanceof Error ? e.message : String(e)}`);
+      return;
     }
+    this.sending = false;
+    this.wait(false);
+    await this.store.remove(list.map((p) => p.id));
+    if (auto && this.store.list().length) {
+      await this.deliver("save");
+    }
+  }
+
+  /** The pending comments stay, with the error. Submit or the next save tries again. */
+  private fail(message: string): void {
+    this.wait(false);
+    this.error = message;
+    void vscode.window.showErrorMessage(message);
+    this.update();
   }
 }

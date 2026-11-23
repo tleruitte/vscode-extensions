@@ -132,6 +132,11 @@ export class Store implements vscode.Disposable {
     );
   }
 
+  /** The pending comments, in the order they were written. */
+  inOrder(): Pending[] {
+    return [...this.pending];
+  }
+
   /** The general comments, in the order they were written. */
   generals(): Pending[] {
     return this.pending.filter(isGeneral);
@@ -249,12 +254,14 @@ export class Store implements vscode.Disposable {
     await this.save();
   }
 
-  async clear(): Promise<void> {
-    for (const thread of this.threads.values()) {
-      thread.dispose();
+  /** Removes the comments that went to the agent. A comment saved during the send stays. */
+  async remove(ids: string[]): Promise<void> {
+    for (const id of ids) {
+      this.threads.get(id)?.dispose();
+      this.threads.delete(id);
     }
-    this.threads.clear();
-    this.pending = [];
+    this.pending = this.pending.filter((p) => !ids.includes(p.id));
+    this.placeGenerals();
     await this.save();
   }
 

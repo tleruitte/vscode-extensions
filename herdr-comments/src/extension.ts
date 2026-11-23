@@ -15,12 +15,13 @@ export function activate(context: vscode.ExtensionContext): void {
   const store = new Store(context.workspaceState, log);
   const panel = new Panel(store);
   const review = new ReviewPage(store);
-  /** A save on the Review page closes it. */
+  /** A save on the Review page closes it. With the preference on, the comment goes to the agent. */
   const saved = async (id: string): Promise<void> => {
     const p = store.get(id);
     if (p && isGeneral(p)) {
       await review.close();
     }
+    await panel.saved();
   };
 
   context.subscriptions.push(

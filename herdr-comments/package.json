@@ -35,6 +35,11 @@
           "default": "claude",
           "description": "The agent that Herdr starts with the comments when no agent works in the folder, as a command (for example `claude` or `codex`)."
         },
+        "herdrComments.sendImmediately": {
+          "type": "boolean",
+          "default": true,
+          "description": "Send each comment to the agent when you save it, without Submit. When the agent waits for your answer to a prompt in Herdr, the comment waits and goes after the answer. Turn it off to keep the comments pending and send them as one review with Submit."
+        },
         "herdrComments.chat": {
           "type": "string",
           "default": "chat",

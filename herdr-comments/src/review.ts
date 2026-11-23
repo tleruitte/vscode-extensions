@@ -1,5 +1,6 @@
 import * as vscode from "vscode";
 import { REVIEW_URI, Store } from "./comments";
+import { sendsImmediately } from "./panel";
 
 /** How long the page waits for the editor before it opens a new comment box anyway. */
 const READY_MS = 1_000;
@@ -27,6 +28,11 @@ export class ReviewPage implements vscode.TextDocumentContentProvider, vscode.Di
       this.changed,
       vscode.workspace.registerTextDocumentContentProvider(REVIEW_URI.scheme, this),
       store.onDidChange(() => this.changed.fire(REVIEW_URI)),
+      vscode.workspace.onDidChangeConfiguration((e) => {
+        if (e.affectsConfiguration("herdrComments.sendImmediately")) {
+          this.changed.fire(REVIEW_URI);
+        }
+      }),
     ];
   }
 
@@ -38,7 +44,9 @@ export class ReviewPage implements vscode.TextDocumentContentProvider, vscode.Di
 
   provideTextDocumentContent(): string {
     return [
-      "General comments for the agent, sent with the review.",
+      sendsImmediately()
+        ? "General comments for the agent, sent when you save them."
+        : "General comments for the agent, sent with the review.",
       ...this.store.generals().map(() => ""),
       "New general comment: + in the gutter, or ⌃⇧C.",
     ].join("\n");
