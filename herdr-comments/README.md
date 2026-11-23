@@ -1,6 +1,6 @@
 # Herdr Comments
 
-VS Code and Cursor extension that sends your comments on lines of code, as one review, to the coding agent that works on the folder in [Herdr](https://herdr.dev).
+VS Code and Cursor extension that sends your comments on lines of code to the coding agent that works on the folder in [Herdr](https://herdr.dev).
 
 ## How to use
 
