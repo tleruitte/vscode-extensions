@@ -31,7 +31,7 @@ VS Code and Cursor extension that shows the files of a chosen diff as a tree, in
    - The marks of Git, of the uncommitted changes, show too. Compared to main, a file with uncommitted changes has both, mostly on the same lines.
    - So that the editor shows these marks, the Source Control view has an empty **Git Changes** entry.
 
-The sidebar refreshes by itself when files change, after a commit, and when you change the branch, as the Source Control view does. Git Changes has no commit box: commit in Herdr or in the terminal.
+The sidebar refreshes by itself as soon as files change, after a commit, when you stage files, and when you change the branch. It watches the files itself, so it does not wait for the Source Control view. Git Changes has no commit box: commit in Herdr or in the terminal.
 
 ## More than one repository
 

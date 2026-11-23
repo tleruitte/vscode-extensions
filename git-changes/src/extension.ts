@@ -34,7 +34,7 @@ export function activate(context: vscode.ExtensionContext): void {
     // With more than one repository, the title offers no commits: each repository row does.
     vscode.commands.registerCommand("gitChanges.choose", async () => {
       const all = repos.list();
-      const root = all.length === 1 ? all[0].rootUri.fsPath : undefined;
+      const root = all.length === 1 ? all[0] : undefined;
       const commits = root ? await recentCommits(root, RECENT_COMMITS) : [];
       const choice = await pickChoice(true, commits);
       if (!choice) {

@@ -1,8 +1,12 @@
 import { execFile } from "node:child_process";
 
-/** Env for git subprocesses: ignore inherited worktree overrides from the IDE. */
+/**
+ * Env for git subprocesses: ignore inherited worktree overrides from the IDE.
+ * With no optional locks, a status does not write the index, so the watchers
+ * of the index do not refresh the tree because of its own requests.
+ */
 function gitEnv(): NodeJS.ProcessEnv {
-  const env = { ...process.env };
+  const env: NodeJS.ProcessEnv = { ...process.env, GIT_OPTIONAL_LOCKS: "0" };
   delete env.GIT_DIR;
   delete env.GIT_WORK_TREE;
   return env;

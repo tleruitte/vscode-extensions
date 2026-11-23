@@ -9,9 +9,6 @@ import { Row, clickOpensDiff } from "./open";
 import { Repos } from "./repos";
 import { Node, buildTree } from "./tree";
 
-/** How long the tree waits for more changes before it refreshes. */
-const REFRESH_DELAY_MS = 300;
-
 /** The changes of one repository in its chosen diff. */
 interface Shown {
   root: string;
@@ -45,9 +42,11 @@ export class Files implements vscode.TreeDataProvider<Node>, vscode.Disposable {
   readonly onDidChangeTreeData = this.changed.event;
   private readonly disposables: vscode.Disposable[] = [];
   private nodes: Node[] = [];
-  /** Counts the refreshes, so only the last one shows. */
+  /** Counts the changes of the choices, so a refresh of an earlier choice does not show. */
   private generation = 0;
-  private timer: NodeJS.Timeout | undefined;
+  private refreshing = false;
+  /** A change came during the refresh, so one more refresh follows it. */
+  private again = false;
 
   constructor(
     private readonly repos: Repos,
@@ -59,32 +58,49 @@ export class Files implements vscode.TreeDataProvider<Node>, vscode.Disposable {
     this.disposables.push(
       this.view,
       this.changed,
-      // Git reports a change of each file of an agent, so the tree waits for the last one.
-      repos.onDidChange(() => this.refreshSoon()),
-      choices.onDidChange(() => void this.refresh()),
-      this.view.onDidChangeVisibility(() => this.view.visible && this.refreshSoon()),
+      repos.onDidChange(() => void this.refresh()),
+      choices.onDidChange(() => {
+        this.generation++;
+        void this.refresh();
+      }),
+      // In case a watcher missed a change.
+      this.view.onDidChangeVisibility(() => this.view.visible && void this.refresh()),
     );
     void this.refresh();
   }
 
   dispose(): void {
-    clearTimeout(this.timer);
     for (const d of this.disposables) {
       d.dispose();
     }
   }
 
-  private refreshSoon(): void {
-    clearTimeout(this.timer);
-    this.timer = setTimeout(() => void this.refresh(), REFRESH_DELAY_MS);
+  /**
+   * Refreshes at once. The changes that come during a refresh make one more
+   * refresh after it, not one for each: an agent or a build changes many files.
+   */
+  private async refresh(): Promise<void> {
+    if (this.refreshing) {
+      this.again = true;
+      return;
+    }
+    this.refreshing = true;
+    try {
+      do {
+        this.again = false;
+        await this.load();
+      } while (this.again);
+    } finally {
+      this.refreshing = false;
+    }
   }
 
-  private async refresh(): Promise<void> {
-    clearTimeout(this.timer);
-    const generation = ++this.generation;
-    const roots = this.repos.list().map((r) => r.rootUri.fsPath);
+  private async load(): Promise<void> {
+    const generation = this.generation;
+    const roots = this.repos.list();
     const all = await Promise.all(roots.map((root) => show(root, this.choices)));
     if (generation !== this.generation) {
+      // The choice changed during the refresh, so it runs again.
       return;
     }
     this.gutter.retain(roots);
