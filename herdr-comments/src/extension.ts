@@ -9,7 +9,10 @@ const BACK_TO_VIEW = "herdrComments.pending.focus";
 const BACK_TO_GIT_CHANGES = "gitChanges.files.focus";
 
 export function activate(context: vscode.ExtensionContext): void {
-  const store = new Store(context.workspaceState);
+  const log = vscode.window.createOutputChannel("Herdr Comments", { log: true });
+  context.subscriptions.push(log);
+  log.info("Herdr Comments started");
+  const store = new Store(context.workspaceState, log);
   const panel = new Panel(store);
   const review = new ReviewPage(store);
   /** A save on the Review page closes it. */

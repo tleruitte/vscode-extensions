@@ -61,7 +61,13 @@ export class Store implements vscode.Disposable {
   /** The editor asked where the Review page can get a comment: a new comment box can open on it. */
   readonly onDidAskReview = this.reviewAsked.event;
 
-  constructor(private readonly state: vscode.Memento) {
+  /** The documents that the editor asked about, so that the log has one line for each. */
+  private readonly asked = new Set<string>();
+
+  constructor(
+    private readonly state: vscode.Memento,
+    private readonly log: vscode.LogOutputChannel,
+  ) {
     this.controller = vscode.comments.createCommentController(
       "herdrComments",
       "Herdr Comments",
@@ -79,9 +85,20 @@ export class Store implements vscode.Disposable {
           const line = this.newGeneralLine();
           return [new vscode.Range(line, 0, line, 0)];
         }
-        return doc.uri.scheme === "file"
-          ? [new vscode.Range(0, 0, Math.max(doc.lineCount - 1, 0), 0)]
-          : [];
+        const ranges =
+          doc.uri.scheme === "file"
+            ? [new vscode.Range(0, 0, Math.max(doc.lineCount - 1, 0), 0)]
+            : [];
+        // When a file has no "+" in the gutter, the log tells if the editor
+        // asked for its lines: a file that is not in the log was not asked about.
+        const key = doc.uri.toString();
+        if (!this.asked.has(key)) {
+          this.asked.add(key);
+          this.log.info(
+            `Commenting ranges asked for ${key}: ${ranges.length ? `lines 1-${doc.lineCount}` : "none"}`,
+          );
+        }
+        return ranges;
       },
     };
     this.pending = state.get<Pending[]>(STATE_KEY, []);
