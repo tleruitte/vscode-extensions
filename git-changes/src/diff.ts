@@ -112,15 +112,74 @@ export async function resolve(root: string, choice: Choice): Promise<Diff> {
   }
 }
 
-/** The files that changed after `head`, as Git reports them with no rename. */
-async function changedAfter(root: string, head: string): Promise<Set<string>> {
-  const out = await git(root, ["diff", "--name-only", "-z", "--no-renames", head]);
-  return new Set(out.split("\0").filter(Boolean));
+/**
+ * Above this length, the paths do not go on the command line, and Git looks at
+ * all the files. The command line of macOS takes about 1 MB.
+ */
+const MAX_PATHS_LENGTH = 100_000;
+
+function names(out: string): string[] {
+  return out.split("\0").filter(Boolean);
 }
 
-export async function changes(root: string, diff: Diff): Promise<Change[]> {
-  const args = ["diff", "--name-status", "-z", "--find-renames", diff.base];
-  const out = await git(root, diff.head ? [...args, diff.head] : args);
+/** `args` for only `paths`, or for all the files when they are too many. */
+function only(args: string[], paths: string[]): string[] {
+  const length = paths.reduce((sum, p) => sum + p.length + 1, 0);
+  return length > MAX_PATHS_LENGTH ? args : ["--literal-pathspecs", ...args, "--", ...paths];
+}
+
+/** The path of an entry of `git status --porcelain=v2`, after its first `fields` fields. */
+function pathAfter(entry: string, fields: number): string {
+  let at = 0;
+  for (let n = 0; n < fields; n++) {
+    at = entry.indexOf(" ", at) + 1;
+  }
+  return entry.slice(at);
+}
+
+interface OnDisk {
+  /** The tracked files that differ from HEAD or from the index, with the old path of a staged rename. */
+  tracked: string[];
+  untracked: string[];
+}
+
+/**
+ * The files that differ from HEAD, from the status of Git. In a large
+ * repository the status is fast, because it uses the file monitor and the
+ * untracked cache, which a diff of the files on disk and `git ls-files` do not.
+ */
+async function onDisk(root: string): Promise<OnDisk> {
+  const parts = (await git(root, ["status", "--porcelain=v2", "-z", "--untracked-files=normal"])).split("\0");
+  const tracked: string[] = [];
+  const untracked: string[] = [];
+  const folders: string[] = [];
+  for (let i = 0; i < parts.length; i++) {
+    const entry = parts[i];
+    switch (entry[0]) {
+      case "1":
+        tracked.push(pathAfter(entry, 8));
+        break;
+      case "2":
+        tracked.push(pathAfter(entry, 9), parts[++i]);
+        break;
+      case "u":
+        tracked.push(pathAfter(entry, 10));
+        break;
+      case "?": {
+        const path = entry.slice(2);
+        (path.endsWith("/") ? folders : untracked).push(path);
+        break;
+      }
+    }
+  }
+  // The status shows a new folder as one entry: list the files in it.
+  if (folders.length) {
+    untracked.push(...names(await git(root, only(["ls-files", "--others", "--exclude-standard", "-z"], folders))));
+  }
+  return { tracked, untracked };
+}
+
+function parseNameStatus(out: string): Change[] {
   const parts = out.split("\0");
   const result: Change[] = [];
   for (let i = 0; i + 1 < parts.length; ) {
@@ -134,18 +193,49 @@ export async function changes(root: string, diff: Diff): Promise<Change[]> {
       result.push({ path, status: letter === "A" || letter === "D" ? letter : "M" });
     }
   }
-  if (!diff.head) {
-    const out = await git(root, ["ls-files", "--others", "--exclude-standard", "-z"]);
-    const untracked = new Set(out.split("\0").filter(Boolean));
-    // A file removed from the index but still on disk is untracked, not deleted.
-    return [
-      ...result.filter((c) => !untracked.has(c.path)),
-      ...[...untracked].map((path): Change => ({ path, status: "U" })),
-    ].sort((a, b) => a.path.localeCompare(b.path));
+  return result;
+}
+
+const NAME_STATUS = ["diff", "--name-status", "-z", "--find-renames"];
+
+/** The files that changed from `from` to HEAD, with no rename. */
+async function committedSince(root: string, from: string): Promise<string[]> {
+  return names(await git(root, ["diff", "--name-only", "-z", "--no-renames", from, "HEAD"]));
+}
+
+/**
+ * The changes of the diff. A diff with the files on disk runs only on the files
+ * that can differ: the ones of the status, and the ones of the commits since
+ * the start of the diff.
+ */
+export async function changes(root: string, diff: Diff): Promise<Change[]> {
+  if (diff.head) {
+    const [result, disk, later] = await Promise.all([
+      git(root, [...NAME_STATUS, diff.base, diff.head]).then(parseNameStatus),
+      onDisk(root),
+      committedSince(root, diff.head),
+    ]);
+    const maybe = new Set([...disk.tracked, ...later]);
+    const candidates = result.map((c) => c.path).filter((p) => maybe.has(p));
+    const after = new Set(
+      candidates.length
+        ? names(await git(root, only(["diff", "--name-only", "-z", "--no-renames", diff.head], candidates)))
+        : [],
+    );
+    for (const change of result) {
+      change.changedSince = after.has(change.path);
+    }
+    return result.sort((a, b) => a.path.localeCompare(b.path));
   }
-  const after = await changedAfter(root, diff.head);
-  for (const change of result) {
-    change.changedSince = after.has(change.path);
-  }
-  return result.sort((a, b) => a.path.localeCompare(b.path));
+  const [disk, committed] = await Promise.all([onDisk(root), committedSince(root, diff.base)]);
+  const candidates = [...new Set([...committed, ...disk.tracked])];
+  const result = candidates.length
+    ? parseNameStatus(await git(root, only([...NAME_STATUS, diff.base], candidates)))
+    : [];
+  const untracked = new Set(disk.untracked);
+  // A file removed from the index but still on disk is untracked, not deleted.
+  return [
+    ...result.filter((c) => !untracked.has(c.path)),
+    ...[...untracked].map((path): Change => ({ path, status: "U" })),
+  ].sort((a, b) => a.path.localeCompare(b.path));
 }
