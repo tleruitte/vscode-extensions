@@ -2,7 +2,7 @@
   "name": "herdr-comments",
   "displayName": "Herdr Comments",
   "description": "Comments on lines of code, sent to the coding agent that works on the folder in Herdr.",
-  "version": "0.2.2",
+  "version": "0.3.0",
   "publisher": "tleruitte",
   "repository": {
     "type": "git",
