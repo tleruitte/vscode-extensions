@@ -2,7 +2,7 @@
   "name": "git-changes",
   "displayName": "Git Changes",
   "description": "A sidebar of the files of a chosen diff, as a tree: the uncommitted changes, the last commit, the branch compared to main, or a commit.",
-  "version": "0.1.0",
+  "version": "0.2.0",
   "publisher": "tleruitte",
   "repository": {
     "type": "git",
