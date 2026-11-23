@@ -65,6 +65,7 @@ export class Files implements vscode.TreeDataProvider<Node>, vscode.Disposable {
       repos.onDidChange(() => void this.refresh()),
       choices.onDidChange(() => {
         this.generation++;
+        this.showLoading();
         void this.refresh();
       }),
       // In case a watcher missed a change.
@@ -77,6 +78,15 @@ export class Files implements vscode.TreeDataProvider<Node>, vscode.Disposable {
     for (const d of this.disposables) {
       d.dispose();
     }
+  }
+
+  /** The list of the earlier diff must not show under the name of the new one. */
+  private showLoading(): void {
+    const roots = this.repos.list();
+    this.nodes = [];
+    this.view.description = describe(roots.length === 1 ? this.choices.of(roots[0]) : this.choices.shared);
+    this.view.message = LOADING;
+    this.changed.fire();
   }
 
   /**
