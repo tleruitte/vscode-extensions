@@ -145,9 +145,32 @@ function realPath(p: string): string {
   }
 }
 
-function isInside(folder: string, p: string): boolean {
-  const rel = path.relative(realPath(folder), realPath(p));
-  return rel === "" || (!rel.startsWith("..") && !path.isAbsolute(rel));
+/** The clone or worktree of `dir`: the nearest folder with a `.git`, if any. */
+function checkout(dir: string): string | undefined {
+  for (; ; dir = path.dirname(dir)) {
+    if (fs.existsSync(path.join(dir, ".git"))) {
+      return dir;
+    }
+    if (path.dirname(dir) === dir) {
+      return undefined;
+    }
+  }
+}
+
+/**
+ * Whether `p` is in `folder`, and in the same checkout when `folder` is in
+ * one: a worktree or clone inside `folder`, for example in `.worktrees/`, is
+ * another checkout.
+ */
+function belongsTo(folder: string, p: string): boolean {
+  const root = realPath(folder);
+  const dir = realPath(p);
+  const rel = path.relative(root, dir);
+  if (rel !== "" && (rel.startsWith("..") || path.isAbsolute(rel))) {
+    return false;
+  }
+  const own = checkout(root);
+  return own === undefined || checkout(dir) === own;
 }
 
 /** "claude" → "Claude". */
@@ -175,7 +198,7 @@ export async function lookUp(
     windowFocus(),
   ]);
   const candidates: Agent[] = terminals
-    .filter((t) => t.status && t.cwd && folders.some((f) => isInside(f, t.cwd!)))
+    .filter((t) => t.status && t.cwd && folders.some((f) => belongsTo(f, t.cwd!)))
     .map((t) => ({
       address: t.address,
       program: t.agent ?? "agent",
@@ -262,7 +285,7 @@ export async function start(
       s.tabs.some((tab) =>
         tab.terminals.some((t) => {
           const cwd = cwds.get(t.terminal);
-          return cwd !== undefined && isInside(folder, cwd);
+          return cwd !== undefined && belongsTo(folder, cwd);
         }),
       ),
   );

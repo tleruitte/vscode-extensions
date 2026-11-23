@@ -15,7 +15,7 @@ VS Code and Cursor extension that sends your comments on lines of code, as one r
 4. The **Herdr Comments** view lists the pending comments. It is in the Explorer. To move it to the Secondary Side Bar, on the right, run **View: Move View**, choose **Herdr Comments**, then **New Secondary Side Bar Entry**. Click a comment to go to it; edit or delete it there or in the editor. The comments stay when the window reloads.
 
 5. The top of the view says which agent gets the comments, for example `To: Claude · setup / fix login`:
-   - The candidates are the agents in Herdr whose folder is in the folder of the window.
+   - The candidates are the agents in Herdr whose folder is in the folder of the window. When the folder of the window is in a Git clone, the agent must also be in that clone: a worktree or a clone inside the folder, for example in `.worktrees/`, is not part of it.
    - The default is the agent that has the focus in Herdr, else an idle one, else the first. Click the person icon to choose another candidate.
    - With no candidate, a new agent starts with the comments: in a new tab of the Herdr space of that folder, else in a new space. The **Herdr Comments: Agent** setting says which agent (`claude` by default).
    - When [herdr-chat](https://github.com/ChmaraX/herdr-chat) is installed, the new agent is a chat. The **Herdr Comments: Chat** setting says which chat mod (`chat` by default; set the name of your fork if you use one). Without that mod, or for an agent other than `claude`, `codex`, or `pi`, the agent starts in a terminal.
