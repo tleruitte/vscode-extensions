@@ -9,6 +9,9 @@ import { Row, clickOpensDiff } from "./open";
 import { Repos } from "./repos";
 import { Node, buildTree } from "./tree";
 
+const VIEW = "gitChanges.files";
+const LOADING = "Loading…";
+
 /** The changes of one repository in its chosen diff. */
 interface Shown {
   root: string;
@@ -54,7 +57,8 @@ export class Files implements vscode.TreeDataProvider<Node>, vscode.Disposable {
     private readonly decorations: Decorations,
     private readonly gutter: Gutter,
   ) {
-    this.view = vscode.window.createTreeView("gitChanges.files", { treeDataProvider: this });
+    this.view = vscode.window.createTreeView(VIEW, { treeDataProvider: this });
+    this.view.message = LOADING;
     this.disposables.push(
       this.view,
       this.changed,
@@ -86,10 +90,13 @@ export class Files implements vscode.TreeDataProvider<Node>, vscode.Disposable {
     }
     this.refreshing = true;
     try {
-      do {
-        this.again = false;
-        await this.load();
-      } while (this.again);
+      // A progress bar at the top of the tree, which keeps the earlier list below it.
+      await vscode.window.withProgress({ location: { viewId: VIEW } }, async () => {
+        do {
+          this.again = false;
+          await this.load();
+        } while (this.again);
+      });
     } finally {
       this.refreshing = false;
     }
@@ -98,6 +105,10 @@ export class Files implements vscode.TreeDataProvider<Node>, vscode.Disposable {
   private async load(): Promise<void> {
     const generation = this.generation;
     const roots = this.repos.list();
+    if (!roots.length && !this.repos.ready) {
+      // The Git extension can still find a repository: the tree shows that it loads.
+      return;
+    }
     const all = await Promise.all(roots.map((root) => show(root, this.choices)));
     if (generation !== this.generation) {
       // The choice changed during the refresh, so it runs again.

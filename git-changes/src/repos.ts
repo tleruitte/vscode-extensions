@@ -77,6 +77,8 @@ export class Repos implements vscode.Disposable {
   private readonly changed = new vscode.EventEmitter<void>();
   readonly onDidChange = this.changed.event;
   private api: API | undefined;
+  /** The Git extension is ready, or is not there: the list has all the repositories. */
+  ready = false;
   private folderRoots: string[] = [];
   private readonly watches = new Map<string, Promise<vscode.Disposable>>();
   private readonly disposables: vscode.Disposable[] = [this.changed];
@@ -96,6 +98,7 @@ export class Repos implements vscode.Disposable {
         this.api.onDidCloseRepository(() => this.update()),
       );
     }
+    this.ready = true;
     this.update();
   }
 
