@@ -72,6 +72,18 @@
         "title": "Open File",
         "category": "Git Changes",
         "icon": "$(go-to-file)"
+      },
+      {
+        "command": "gitChanges.hideTests",
+        "title": "Hide Test Files",
+        "category": "Git Changes",
+        "icon": "$(filter)"
+      },
+      {
+        "command": "gitChanges.showTests",
+        "title": "Show Test Files",
+        "category": "Git Changes",
+        "icon": "$(filter-filled)"
       }
     ],
     "menus": {
@@ -91,9 +103,27 @@
         {
           "command": "gitChanges.openFile",
           "when": "false"
+        },
+        {
+          "command": "gitChanges.hideTests",
+          "when": "!gitChanges.testsHidden"
+        },
+        {
+          "command": "gitChanges.showTests",
+          "when": "gitChanges.testsHidden"
         }
       ],
       "view/title": [
+        {
+          "command": "gitChanges.hideTests",
+          "when": "view == gitChanges.files && !gitChanges.testsHidden",
+          "group": "navigation@0"
+        },
+        {
+          "command": "gitChanges.showTests",
+          "when": "view == gitChanges.files && gitChanges.testsHidden",
+          "group": "navigation@0"
+        },
         {
           "command": "gitChanges.choose",
           "when": "view == gitChanges.files",
@@ -117,6 +147,17 @@
           "group": "inline@1"
         }
       ]
+    },
+    "configuration": {
+      "title": "Git Changes",
+      "properties": {
+        "gitChanges.hideTestFiles": {
+          "type": "boolean",
+          "default": false,
+          "scope": "application",
+          "description": "Hide the test files in the list of Git Changes. The button in the title of Git Changes changes it, for all the windows."
+        }
+      }
     }
   },
   "scripts": {

@@ -7,6 +7,7 @@ import { Gutter } from "./gutter";
 import { Row, openDiff, openFile, openRow } from "./open";
 import { pickChoice } from "./picker";
 import { Repos } from "./repos";
+import { hideTests, setTestsContext } from "./tests";
 import { File, Repo } from "./tree";
 import { Versions } from "./versions";
 
@@ -27,6 +28,11 @@ export function activate(context: vscode.ExtensionContext): void {
     gutter,
     files,
     new Versions(),
+    vscode.commands.registerCommand("gitChanges.hideTests", () => hideTests(true)),
+    vscode.commands.registerCommand("gitChanges.showTests", () => hideTests(false)),
+    vscode.workspace.onDidChangeConfiguration(
+      (e) => e.affectsConfiguration("gitChanges.hideTestFiles") && void setTestsContext(),
+    ),
     vscode.commands.registerCommand("gitChanges.open", (row: Row) => openRow(row)),
     // The buttons of a row get its node.
     vscode.commands.registerCommand("gitChanges.openDiff", (node: File) => openDiff(node.row)),
@@ -58,6 +64,7 @@ export function activate(context: vscode.ExtensionContext): void {
       }
     }),
   );
+  void setTestsContext();
   void repos.start();
 }
 

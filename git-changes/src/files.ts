@@ -7,6 +7,7 @@ import { NoDiff, Status, changes, resolve } from "./diff";
 import { Gutter } from "./gutter";
 import { Row, clickOpensDiff } from "./open";
 import { Repos } from "./repos";
+import { isTest, testsHidden } from "./tests";
 import { Node, buildTree } from "./tree";
 
 const VIEW = "gitChanges.files";
@@ -45,6 +46,8 @@ export class Files implements vscode.TreeDataProvider<Node>, vscode.Disposable {
   readonly onDidChangeTreeData = this.changed.event;
   private readonly disposables: vscode.Disposable[] = [];
   private nodes: Node[] = [];
+  /** The changes of the last refresh, or none while the tree loads. */
+  private shown: Shown[] | undefined;
   /** Counts the changes of the choices, so a refresh of an earlier choice does not show. */
   private generation = 0;
   private refreshing = false;
@@ -70,6 +73,7 @@ export class Files implements vscode.TreeDataProvider<Node>, vscode.Disposable {
       }),
       // In case a watcher missed a change.
       this.view.onDidChangeVisibility(() => this.view.visible && void this.refresh()),
+      vscode.workspace.onDidChangeConfiguration((e) => e.affectsConfiguration("gitChanges") && this.render()),
     );
     void this.refresh();
   }
@@ -83,6 +87,7 @@ export class Files implements vscode.TreeDataProvider<Node>, vscode.Disposable {
   /** The list of the earlier diff must not show under the name of the new one. */
   private showLoading(): void {
     const roots = this.repos.list();
+    this.shown = undefined;
     this.nodes = [];
     this.view.description = describe(roots.length === 1 ? this.choices.of(roots[0]) : this.choices.shared);
     this.view.message = LOADING;
@@ -138,9 +143,22 @@ export class Files implements vscode.TreeDataProvider<Node>, vscode.Disposable {
         ),
       ),
     );
+    this.shown = all;
+    this.render();
+  }
+
+  /** The tree of the last refresh, with or without the test files. */
+  private render(): void {
+    const all = this.shown;
+    if (!all) {
+      return;
+    }
+    // The filter hides rows only: the colors and the marks in the gutter stay.
+    const hide = testsHidden();
+    const visible = (s: Shown) => (hide ? s.rows.filter((r) => !isTest(r.change.path)) : s.rows);
     if (all.length === 1) {
       const [only] = all;
-      this.nodes = buildTree(only.root, only.rows);
+      this.nodes = buildTree(only.root, visible(only));
       this.view.description = only.description;
       this.view.message = only.message;
     } else {
@@ -150,7 +168,7 @@ export class Files implements vscode.TreeDataProvider<Node>, vscode.Disposable {
         description: s.description,
         children: s.message
           ? [{ kind: "message", root: s.root, text: s.message }]
-          : buildTree(s.root, s.rows),
+          : buildTree(s.root, visible(s)),
       }));
       this.view.description = describe(this.choices.shared);
       this.view.message = all.length ? undefined : "No Git repository in the workspace.";
