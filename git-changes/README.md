@@ -21,17 +21,13 @@ VS Code and Cursor extension that shows the files of a chosen diff as a tree, in
 
 5. The sidebar shows the changed files as a folder tree. As in the Explorer, the name and the letter on the right show the status: added (A), modified (M), deleted (D), renamed (R), or untracked (U). The status is the one of the chosen diff: compared to main, a file that the branch added shows as added, also when it is committed. A renamed file shows its old name after its name.
 
-6. Click the filter icon (**Hide Test Files**) in the title of the sidebar to hide the test files. The setting **Git Changes: Test Files** (`gitChanges.testFiles`) gives them as glob patterns of the paths from the root of the repository. By default: `*.test.*`, `*.spec.*`, and the files in `__tests__/`, `test/`, `tests/`, `__snapshots__/`, and `__mocks__/`, in any folder. A value replaces the default list, so keep the default patterns that you want in it. Click it again (**Show Test Files**) to show them. The choice applies to all the windows, and stays after a restart. While the test files are hidden, the title of the sidebar says how many, for example **3 test files hidden**. The filter hides rows of the list only: the colors of the files and the marks in the gutter stay. When the diff has only test files, the sidebar says **Only test files changed.**
+6. Click the filter icon (**Hide Test Files**) in the title of the sidebar to hide the test files. The setting **Git Changes: Test Files** (`gitChanges.testFiles`) gives them as glob patterns of the paths from the root of the repository. By default: `*.test.*`, `*.spec.*`, and the files in `__tests__/`, `test/`, `tests/`, `__snapshots__/`, and `__mocks__/`, in any folder. A value replaces the default list, so keep the default patterns that you want in it. Click it again (**Show Test Files**) to show them. The choice applies to all the windows, and stays after a restart. While the test files are hidden, the title of the sidebar says how many, for example **3 test files hidden**. The filter hides rows of the list only: the colors of the files stay. When the diff has only test files, the sidebar says **Only test files changed.**
 
-7. Click a file to open it in a normal editor. Two cases open the diff of the file instead:
-   - A deleted file.
+7. Click a file to open its diff for the chosen diff, as on GitHub. The left side is the file at the start of the diff. The right side is the current file, so you can edit it and comment on it. Two cases have a read-only version on the right side instead:
+   - A deleted file: the right side is empty.
    - For the last commit, a commit, or a range of commits: a file that changed after that commit or range. Its row says **changed since**. The diff shows exactly the changes of that commit or range, between two read-only versions of the file.
 
-8. Click the diff icon (**Open Changes**) on a row to open the diff of that file for the chosen diff. When the file did not change since, the right side of the diff is the current file, so you can edit it and comment on it. On a row that a click opens as a diff, the icon (**Open File**) opens the current file instead.
-
-9. In a normal editor, the gutter shows the added, changed, and deleted lines of the chosen diff, also when they are committed. Click a mark to see the change, with the removed lines. For the uncommitted changes, these are the marks of Git. For the other choices:
-   - The marks of Git, of the uncommitted changes, show too. Compared to main, a file with uncommitted changes has both, mostly on the same lines.
-   - So that the editor shows these marks, the Source Control view has an empty **Git Changes** entry.
+8. Click the file icon (**Open File**) on a row to open the current file in a normal editor. A file that does not exist now has no icon.
 
 The sidebar refreshes by itself as soon as files change, after a commit, when you stage files, and when you change the branch. It watches the files itself, so it does not wait for the Source Control view. While it reads the changes, a progress bar shows at the top of the sidebar, above the earlier list. When the sidebar first shows, it says **Loading…** until it has the list. Git Changes has no commit box: commit in Herdr or in the terminal.
 

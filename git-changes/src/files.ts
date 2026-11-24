@@ -1,11 +1,9 @@
 import * as vscode from "vscode";
-import * as fs from "node:fs";
 import * as path from "node:path";
 import { Choices, describe } from "./choice";
 import { Decorations, rowUri } from "./decorations";
 import { NoDiff, Status, changes, resolve } from "./diff";
-import { Gutter } from "./gutter";
-import { Row, clickOpensDiff } from "./open";
+import { Row, hasCurrentFile } from "./open";
 import { Repos } from "./repos";
 import { testMatcher, testsHidden } from "./tests";
 import { Node, buildTree } from "./tree";
@@ -58,7 +56,6 @@ export class Files implements vscode.TreeDataProvider<Node>, vscode.Disposable {
     private readonly repos: Repos,
     private readonly choices: Choices,
     private readonly decorations: Decorations,
-    private readonly gutter: Gutter,
   ) {
     this.view = vscode.window.createTreeView(VIEW, { treeDataProvider: this });
     this.view.message = LOADING;
@@ -129,13 +126,6 @@ export class Files implements vscode.TreeDataProvider<Node>, vscode.Disposable {
       // The choice changed during the refresh, so it runs again.
       return;
     }
-    this.gutter.retain(roots);
-    for (const shown of all) {
-      this.gutter.set(
-        shown.root,
-        this.choices.of(shown.root).kind === "uncommitted" ? undefined : shown.rows,
-      );
-    }
     this.decorations.set(
       new Map(
         all.flatMap((s) =>
@@ -153,7 +143,7 @@ export class Files implements vscode.TreeDataProvider<Node>, vscode.Disposable {
     if (!all) {
       return;
     }
-    // The filter hides rows only: the colors and the marks in the gutter stay.
+    // The filter hides rows only: the colors of the files stay.
     const hide = testsHidden();
     const split = all.map((s) => {
       const isTest = testMatcher(s.root);
@@ -223,12 +213,8 @@ export class Files implements vscode.TreeDataProvider<Node>, vscode.Disposable {
           .filter(Boolean)
           .join(" · ");
         item.command = { command: "gitChanges.open", title: "Open", arguments: [node.row] };
-        // When a click opens the diff, the button opens the current file, if there is one.
-        item.contextValue = !clickOpensDiff(node.row)
-          ? "gitChangesFile"
-          : fs.existsSync(path.join(root, change.path))
-            ? "gitChangesDiffFile"
-            : "gitChangesGoneFile";
+        // A click opens the diff. The button opens the current file, if there is one.
+        item.contextValue = hasCurrentFile(node.row) ? "gitChangesFile" : "gitChangesGoneFile";
         return item;
       }
     }

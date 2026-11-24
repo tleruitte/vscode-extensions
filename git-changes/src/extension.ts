@@ -3,8 +3,7 @@ import { Choices } from "./choice";
 import { Decorations } from "./decorations";
 import { Files } from "./files";
 import { recentCommits } from "./git";
-import { Gutter } from "./gutter";
-import { Row, openDiff, openFile, openRow } from "./open";
+import { Row, openDiff, openFile } from "./open";
 import { pickChoice } from "./picker";
 import { Repos } from "./repos";
 import { hideTests, setTestsContext } from "./tests";
@@ -18,14 +17,12 @@ export function activate(context: vscode.ExtensionContext): void {
   const repos = new Repos();
   const choices = new Choices(context.workspaceState);
   const decorations = new Decorations();
-  const gutter = new Gutter();
-  const files = new Files(repos, choices, decorations, gutter);
+  const files = new Files(repos, choices, decorations);
 
   context.subscriptions.push(
     repos,
     choices,
     decorations,
-    gutter,
     files,
     new Versions(),
     vscode.commands.registerCommand("gitChanges.hideTests", () => hideTests(true)),
@@ -33,9 +30,8 @@ export function activate(context: vscode.ExtensionContext): void {
     vscode.workspace.onDidChangeConfiguration(
       (e) => e.affectsConfiguration("gitChanges.hideTestFiles") && void setTestsContext(),
     ),
-    vscode.commands.registerCommand("gitChanges.open", (row: Row) => openRow(row)),
-    // The buttons of a row get its node.
-    vscode.commands.registerCommand("gitChanges.openDiff", (node: File) => openDiff(node.row)),
+    vscode.commands.registerCommand("gitChanges.open", (row: Row) => openDiff(row)),
+    // The button of a row gets its node.
     vscode.commands.registerCommand("gitChanges.openFile", (node: File) => openFile(node.row)),
     // With more than one repository, the title offers no commits: each repository row does.
     vscode.commands.registerCommand("gitChanges.choose", async () => {
