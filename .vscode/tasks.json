@@ -4,40 +4,6 @@
     {
       "type": "npm",
       "script": "watch",
-      "path": "git-changes",
-      "problemMatcher": "$tsc-watch",
-      "isBackground": true,
-      "group": "build",
-      "label": "npm: watch - git-changes"
-    },
-    {
-      "type": "npm",
-      "script": "compile",
-      "path": "git-changes",
-      "problemMatcher": "$tsc",
-      "group": "build",
-      "label": "npm: compile - git-changes"
-    },
-    {
-      "type": "npm",
-      "script": "watch",
-      "path": "herdr-comments",
-      "problemMatcher": "$tsc-watch",
-      "isBackground": true,
-      "group": "build",
-      "label": "npm: watch - herdr-comments"
-    },
-    {
-      "type": "npm",
-      "script": "compile",
-      "path": "herdr-comments",
-      "problemMatcher": "$tsc",
-      "group": "build",
-      "label": "npm: compile - herdr-comments"
-    },
-    {
-      "type": "npm",
-      "script": "watch",
       "path": "open-on-github",
       "problemMatcher": "$tsc-watch",
       "isBackground": true,
